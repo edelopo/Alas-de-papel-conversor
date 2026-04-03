@@ -95,26 +95,21 @@ Config notes:
 - `cover.review_count_format`: custom review count text. Use `{count}` as the placeholder.
 
 
-## Font configuration
+## Friendlier font selection
 
-You can change the PDF fonts from `config.json` without touching the code:
+You can now choose a font preset in `config.json` instead of editing font paths directly.
 
 ```json
 "fonts": {
-  "text": {
-    "family_name": "DejaVu",
-    "regular": "fonts/DejaVuSans.ttf",
-    "bold": "fonts/DejaVuSans-Bold.ttf",
-    "italic": "fonts/DejaVuSans-Oblique.ttf",
-    "fallback_core_family": "Helvetica"
-  },
-  "emoji": {
-    "family_name": "NotoEmoji",
-    "regular": "fonts/NotoColorEmoji.ttf",
-    "fallback_symbols": "fonts/NotoSansSymbols2-Regular.ttf",
-    "enabled": true
+  "selection": {
+    "preset": "bundled_dejavu"
   }
 }
 ```
 
-If the configured font files are not found, the script falls back to a safe built-in PDF font.
+Available presets:
+- `bundled_dejavu`: uses the bundled project fonts and keeps good Unicode support
+- `core_helvetica`: uses a built-in PDF font with no external font files
+- `custom`: lets you provide your own font file paths in `fonts.custom`
+
+If the selected font files are not found, the script falls back to the safe core font configured in `fonts.selection.fallback_core_family`.
