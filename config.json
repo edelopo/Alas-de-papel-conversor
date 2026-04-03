@@ -17,7 +17,9 @@
   "cover": {
     "enabled": true,
     "show_review_count": true,
-    "subtitle": "Nuestro grupo de lectura"
+    "subtitle": "Nuestro grupo de lectura",
+    "title_text": "Alas de papel — Review Booklet",
+    "review_count_format": "Total reviews: {count}"
   },
   "header": {
     "show_review_counter": true,

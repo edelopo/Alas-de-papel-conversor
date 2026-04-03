@@ -63,20 +63,27 @@ def _add_cover_page(pdf: FPDF, config: dict[str, Any], review_count: int) -> Non
     cover = config["cover"]
 
     pdf.add_page()
+
+    title_text = cover.get("title_text") or config["booklet_title"]
+    subtitle = cover.get("subtitle", "")
+    review_count_text = ""
+    if cover.get("show_review_count", False):
+        review_count_format = cover.get("review_count_format", "Total reviews: {count}")
+        review_count_text = review_count_format.format(count=review_count)
+
     pdf.set_font("Helvetica", "B", fonts["cover_title_size"])
     pdf.ln(25)
-    pdf.multi_cell(0, 12, _safe_text(config["booklet_title"]), align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(0, 12, _safe_text(title_text), align="C", new_x="LMARGIN", new_y="NEXT")
 
-    if cover["show_review_count"]:
-        pdf.ln(spacing["after_cover_title"])
-        pdf.set_font("Helvetica", "", fonts["cover_meta_size"])
-        pdf.multi_cell(0, 8, _safe_text(f"Total reviews: {review_count}"), align="C", new_x="LMARGIN", new_y="NEXT")
-
-    subtitle = cover.get("subtitle", "")
     if subtitle:
-        pdf.ln(spacing["after_cover_meta"])
+        pdf.ln(spacing["after_cover_title"])
         pdf.set_font("Helvetica", "I", fonts["cover_subtitle_size"])
         pdf.multi_cell(0, 7, _safe_text(subtitle), align="C", new_x="LMARGIN", new_y="NEXT")
+
+    if review_count_text:
+        pdf.ln(spacing["after_cover_meta"])
+        pdf.set_font("Helvetica", "", fonts["cover_meta_size"])
+        pdf.multi_cell(0, 8, _safe_text(review_count_text), align="C", new_x="LMARGIN", new_y="NEXT")
 
 
 def _add_review(pdf: FPDF, review: Review, index: int, total: int, config: dict[str, Any]) -> None:

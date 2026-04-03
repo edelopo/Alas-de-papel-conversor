@@ -87,3 +87,9 @@ config.json -> output_pdf
 - This keeps the code simple: configuration is external, but the review-loading logic still matches your current Google Forms CSV structure.
 - This MVP still uses `fpdf2` and core PDF fonts to keep setup simple.
 - Unsupported characters such as emoji are removed from the PDF output.
+
+
+Config notes:
+- `cover.title_text`: custom cover title
+- `cover.subtitle`: custom cover subtitle
+- `cover.review_count_format`: custom review count text. Use `{count}` as the placeholder.
