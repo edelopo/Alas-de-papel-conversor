@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from fpdf import FPDF
 
@@ -9,95 +9,126 @@ from .load_reviews import Review
 
 
 class ReviewBookletPDF(FPDF):
+    def __init__(self, config: dict[str, Any]) -> None:
+        pdf_config = config["pdf"]
+        super().__init__(orientation=pdf_config["orientation"], format=pdf_config["page_size"])
+        self.config = config
+
     def header(self) -> None:
         if self.page_no() == 1:
             return
-        self.set_font("Helvetica", "I", 9)
-        self.cell(0, 8, _safe_text("Reading Group Reviews"), new_x="LMARGIN", new_y="NEXT", align="R")
+        font_size = self.config["fonts"]["header_footer_size"]
+        self.set_font("Helvetica", "I", font_size)
+        self.cell(0, 8, _safe_text(self.config["booklet_title"]), new_x="LMARGIN", new_y="NEXT", align="R")
 
     def footer(self) -> None:
+        font_size = self.config["fonts"]["header_footer_size"]
         self.set_y(-12)
-        self.set_font("Helvetica", "I", 9)
+        self.set_font("Helvetica", "I", font_size)
         self.cell(0, 8, _safe_text(f"Page {self.page_no()}"), align="C")
 
 
 def build_pdf(
     reviews: Iterable[Review],
     output_path: str | Path,
-    booklet_title: str = "Reading Group Reviews",
+    config: dict[str, Any],
 ) -> Path:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    pdf = ReviewBookletPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.set_margins(left=16, top=16, right=16)
-    pdf.set_title(_safe_text(booklet_title))
+    pdf = ReviewBookletPDF(config)
+    margins = config["pdf"]["margins"]
+    pdf.set_auto_page_break(auto=config["pdf"]["auto_page_break"], margin=margins["bottom"])
+    pdf.set_margins(left=margins["left"], top=margins["top"], right=margins["right"])
+    pdf.set_title(_safe_text(config["booklet_title"]))
     pdf.set_author("booklet_reviews_mvp")
 
     reviews = list(reviews)
 
-    _add_cover_page(pdf, booklet_title, len(reviews))
+    if config["cover"]["enabled"]:
+        _add_cover_page(pdf, config, len(reviews))
 
     for index, review in enumerate(reviews, start=1):
-        pdf.add_page()
-        _add_review(pdf, review, index, len(reviews))
+        if config["pdf"]["start_each_review_on_new_page"] or pdf.page_no() == 0:
+            pdf.add_page()
+        _add_review(pdf, review, index, len(reviews), config)
 
     pdf.output(str(output_path))
     return output_path
 
 
-def _add_cover_page(pdf: FPDF, booklet_title: str, review_count: int) -> None:
+def _add_cover_page(pdf: FPDF, config: dict[str, Any], review_count: int) -> None:
+    spacing = config["spacing"]
+    fonts = config["fonts"]
+    cover = config["cover"]
+
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 22)
+    pdf.set_font("Helvetica", "B", fonts["cover_title_size"])
     pdf.ln(25)
-    pdf.multi_cell(0, 12, _safe_text(booklet_title), align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(0, 12, _safe_text(config["booklet_title"]), align="C", new_x="LMARGIN", new_y="NEXT")
 
-    pdf.ln(10)
-    pdf.set_font("Helvetica", "", 13)
-    pdf.multi_cell(0, 8, _safe_text(f"Total reviews: {review_count}"), align="C", new_x="LMARGIN", new_y="NEXT")
+    if cover["show_review_count"]:
+        pdf.ln(spacing["after_cover_title"])
+        pdf.set_font("Helvetica", "", fonts["cover_meta_size"])
+        pdf.multi_cell(0, 8, _safe_text(f"Total reviews: {review_count}"), align="C", new_x="LMARGIN", new_y="NEXT")
 
-    pdf.ln(6)
-    pdf.set_font("Helvetica", "I", 11)
-    pdf.multi_cell(
-        0,
-        7,
-        _safe_text("Sorted by book title and submission timestamp"),
-        align="C",
-        new_x="LMARGIN",
-        new_y="NEXT",
-    )
+    subtitle = cover.get("subtitle", "")
+    if subtitle:
+        pdf.ln(spacing["after_cover_meta"])
+        pdf.set_font("Helvetica", "I", fonts["cover_subtitle_size"])
+        pdf.multi_cell(0, 7, _safe_text(subtitle), align="C", new_x="LMARGIN", new_y="NEXT")
 
 
-def _add_review(pdf: FPDF, review: Review, index: int, total: int) -> None:
-    pdf.set_font("Helvetica", "B", 16)
+def _add_review(pdf: FPDF, review: Review, index: int, total: int, config: dict[str, Any]) -> None:
+    fonts = config["fonts"]
+    spacing = config["spacing"]
+    header = config["header"]
+    criteria_config = config["criteria"]
+    labels = header["labels"]
+
+    pdf.set_font("Helvetica", "B", fonts["review_title_size"])
     title = review.book_title or "Untitled book"
     pdf.multi_cell(0, 9, _safe_text(title), new_x="LMARGIN", new_y="NEXT")
 
-    pdf.ln(1)
-    pdf.set_font("Helvetica", "", 11)
-    pdf.cell(0, 7, _safe_text(f"Review {index} of {total}"), new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, _safe_text(f"Reviewer: {review.reviewer_name or 'Unknown'}"), new_x="LMARGIN", new_y="NEXT")
-    if review.timestamp:
-        pdf.cell(0, 7, _safe_text(f"Submitted: {review.timestamp}"), new_x="LMARGIN", new_y="NEXT")
-    average_text = _format_average(review.average_score)
-    pdf.cell(0, 7, _safe_text(f"Average score: {average_text}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(spacing["before_review_meta"])
+    pdf.set_font("Helvetica", "", fonts["meta_size"])
 
-    pdf.ln(4)
+    if header["show_review_counter"]:
+        pdf.cell(0, 7, _safe_text(f"{labels['review_counter']} {index} of {total}"), new_x="LMARGIN", new_y="NEXT")
+    if header["show_reviewer_name"]:
+        reviewer = review.reviewer_name or "Unknown"
+        pdf.cell(0, 7, _safe_text(f"{labels['reviewer_name']}: {reviewer}"), new_x="LMARGIN", new_y="NEXT")
+    if header["show_timestamp"] and review.timestamp:
+        pdf.cell(0, 7, _safe_text(f"{labels['timestamp']}: {review.timestamp}"), new_x="LMARGIN", new_y="NEXT")
+    if header["show_average_score"]:
+        average_text = _format_average(review.average_score)
+        pdf.cell(0, 7, _safe_text(f"{labels['average_score']}: {average_text}"), new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(spacing["before_criteria"])
 
     for criterion in review.criteria:
-        score_text = criterion.score if criterion.score else "-"
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.multi_cell(0, 7, _safe_text(f"{criterion.name} - Score: {score_text}"), new_x="LMARGIN", new_y="NEXT")
+        has_comment = bool(criterion.comment)
+        if not has_comment and not criteria_config["show_empty_comments"]:
+            continue
 
-        if criterion.comment:
-            pdf.set_font("Helvetica", "", 11)
+        score_text = criterion.score if criterion.score else "-"
+        pdf.set_font("Helvetica", "B", fonts["criterion_title_size"])
+        pdf.multi_cell(
+            0,
+            7,
+            _safe_text(f"{criterion.name} - {criteria_config['score_label']}: {score_text}"),
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
+
+        if has_comment:
+            pdf.set_font("Helvetica", "", fonts["body_size"])
             pdf.multi_cell(0, 6, _safe_text(criterion.comment), new_x="LMARGIN", new_y="NEXT")
         else:
-            pdf.set_font("Helvetica", "I", 11)
-            pdf.multi_cell(0, 6, _safe_text("No comment provided."), new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "I", fonts["body_size"])
+            pdf.multi_cell(0, 6, _safe_text(criteria_config["empty_comment_text"]), new_x="LMARGIN", new_y="NEXT")
 
-        pdf.ln(2)
+        pdf.ln(spacing["between_criteria"])
 
 
 def _format_average(value: float | None) -> str:
@@ -107,24 +138,15 @@ def _format_average(value: float | None) -> str:
 
 
 def _safe_text(text: str) -> str:
-    """
-    Convert text to something that works with FPDF core fonts.
-
-    MVP choice:
-    - keep the project dependency-light
-    - avoid requiring the user to install external font files
-    - replace a few common unicode punctuation characters
-    - drop unsupported characters such as emoji
-    """
     replacements = {
-        "\u2014": "-",   # em dash
-        "\u2013": "-",   # en dash
-        "\u2026": "...", # ellipsis
-        "\u00a0": " ",   # non-breaking space
-        "\u202f": " ",   # narrow no-break space
-        "\u2009": " ",   # thin space
-        "\u200b": "",    # zero-width space
-        "\ufeff": "",    # bom
+        "—": "-",
+        "–": "-",
+        "…": "...",
+        " ": " ",
+        " ": " ",
+        " ": " ",
+        "​": "",
+        "﻿": "",
         "’": "'",
         "‘": "'",
         "“": '"',
