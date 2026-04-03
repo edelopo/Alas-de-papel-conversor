@@ -20,7 +20,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "cover": {
         "enabled": True,
         "show_review_count": True,
+        "title_text": "Reading Group Reviews",
         "subtitle": "Sorted by book title and submission timestamp",
+        "review_count_format": "Total reviews: {count}",
     },
     "header": {
         "show_review_counter": True,
@@ -38,8 +40,28 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "show_empty_comments": True,
         "empty_comment_text": "No comment provided.",
         "score_label": "Score",
+        "score_style": "numeric",
+        "star_symbols": {
+            "full": "★",
+            "half": "⯨",
+            "empty": "☆",
+        },
+        "star_scale_max": 10,
     },
     "fonts": {
+        "text": {
+            "family_name": "DejaVu",
+            "regular": "fonts/DejaVuSans.ttf",
+            "bold": "fonts/DejaVuSans-Bold.ttf",
+            "italic": "fonts/DejaVuSans-Oblique.ttf",
+            "fallback_core_family": "Helvetica",
+        },
+        "emoji": {
+            "family_name": "NotoEmoji",
+            "regular": "fonts/NotoColorEmoji.ttf",
+            "fallback_symbols": "fonts/NotoSansSymbols2-Regular.ttf",
+            "enabled": True,
+        },
         "cover_title_size": 22,
         "cover_meta_size": 13,
         "cover_subtitle_size": 11,

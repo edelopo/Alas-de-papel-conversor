@@ -8,10 +8,14 @@ from fpdf import FPDF
 from .load_reviews import Review
 
 
-DEJAVU_REGULAR = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-DEJAVU_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-DEJAVU_ITALIC = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf"
-NOTO_SYMBOLS = "/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SYSTEM_FONT_CANDIDATES = {
+    "text_regular": [Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")],
+    "text_bold": [Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")],
+    "text_italic": [Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf")],
+    "emoji": [Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf")],
+    "symbols": [Path("/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf")],
+}
 
 
 class ReviewBookletPDF(FPDF):
@@ -19,31 +23,72 @@ class ReviewBookletPDF(FPDF):
         pdf_config = config["pdf"]
         super().__init__(orientation=pdf_config["orientation"], format=pdf_config["page_size"])
         self.config = config
-        self._fonts_ready = False
+        self.base_font_family = "Helvetica"
+        self.emoji_font_family: str | None = None
         self._register_fonts()
 
     def _register_fonts(self) -> None:
-        if self._fonts_ready:
-            return
-        self.add_font("DejaVu", style="", fname=DEJAVU_REGULAR)
-        self.add_font("DejaVu", style="B", fname=DEJAVU_BOLD)
-        self.add_font("DejaVu", style="I", fname=DEJAVU_ITALIC)
-        self.add_font("NotoSymbols", style="", fname=NOTO_SYMBOLS)
-        self.set_fallback_fonts(["NotoSymbols"], exact_match=False)
-        self._fonts_ready = True
+        fonts_config = self.config.get("fonts", {})
+        text_config = fonts_config.get("text", {})
+        emoji_config = fonts_config.get("emoji", {})
+
+        fallback_core = text_config.get("fallback_core_family", "Helvetica")
+        self.base_font_family = fallback_core
+
+        regular = _resolve_font_path(text_config.get("regular"), SYSTEM_FONT_CANDIDATES["text_regular"])
+        bold = _resolve_font_path(text_config.get("bold"), SYSTEM_FONT_CANDIDATES["text_bold"])
+        italic = _resolve_font_path(text_config.get("italic"), SYSTEM_FONT_CANDIDATES["text_italic"])
+        configured_family_name = text_config.get("family_name", "CustomText")
+
+        if regular and bold and italic:
+            self.add_font(configured_family_name, style="", fname=str(regular))
+            self.add_font(configured_family_name, style="B", fname=str(bold))
+            self.add_font(configured_family_name, style="I", fname=str(italic))
+            self.base_font_family = configured_family_name
+
+        fallback_fonts: list[str] = []
+        if emoji_config.get("enabled", True):
+            emoji_path = _resolve_font_path(emoji_config.get("regular"), SYSTEM_FONT_CANDIDATES["emoji"])
+            emoji_family_name = emoji_config.get("family_name", "Emoji")
+            if emoji_path:
+                self.add_font(emoji_family_name, style="", fname=str(emoji_path))
+                self.emoji_font_family = emoji_family_name
+                fallback_fonts.append(emoji_family_name)
+
+            symbol_path = _resolve_font_path(emoji_config.get("fallback_symbols"), SYSTEM_FONT_CANDIDATES["symbols"])
+            if symbol_path:
+                symbol_family_name = "SymbolFallback"
+                self.add_font(symbol_family_name, style="", fname=str(symbol_path))
+                fallback_fonts.append(symbol_family_name)
+
+        if fallback_fonts:
+            self.set_fallback_fonts(fallback_fonts, exact_match=False)
 
     def header(self) -> None:
         if self.page_no() == 1:
             return
         font_size = self.config["fonts"]["header_footer_size"]
-        self.set_font("DejaVu", "I", font_size)
+        self.set_font(self.base_font_family, "I", font_size)
         self.cell(0, 8, _safe_text(self.config["booklet_title"]), new_x="LMARGIN", new_y="NEXT", align="R")
 
     def footer(self) -> None:
         font_size = self.config["fonts"]["header_footer_size"]
         self.set_y(-12)
-        self.set_font("DejaVu", "I", font_size)
+        self.set_font(self.base_font_family, "I", font_size)
         self.cell(0, 8, _safe_text(str(self.page_no())), align="C")
+
+
+def _resolve_font_path(configured_path: str | None, system_candidates: list[Path]) -> Path | None:
+    if configured_path:
+        candidate = Path(configured_path)
+        if not candidate.is_absolute():
+            candidate = PROJECT_ROOT / candidate
+        if candidate.exists():
+            return candidate
+    for candidate in system_candidates:
+        if candidate.exists():
+            return candidate
+    return None
 
 
 def build_pdf(
@@ -89,18 +134,18 @@ def _add_cover_page(pdf: FPDF, config: dict[str, Any], review_count: int) -> Non
         review_count_format = cover.get("review_count_format", "Total reviews: {count}")
         review_count_text = review_count_format.format(count=review_count)
 
-    pdf.set_font("DejaVu", "B", fonts["cover_title_size"])
+    pdf.set_font(pdf.base_font_family, "B", fonts["cover_title_size"])
     pdf.ln(25)
     pdf.multi_cell(0, 12, _safe_text(title_text), align="C", new_x="LMARGIN", new_y="NEXT")
 
     if subtitle:
         pdf.ln(spacing["after_cover_title"])
-        pdf.set_font("DejaVu", "I", fonts["cover_subtitle_size"])
+        pdf.set_font(pdf.base_font_family, "I", fonts["cover_subtitle_size"])
         pdf.multi_cell(0, 7, _safe_text(subtitle), align="C", new_x="LMARGIN", new_y="NEXT")
 
     if review_count_text:
         pdf.ln(spacing["after_cover_meta"])
-        pdf.set_font("DejaVu", "", fonts["cover_meta_size"])
+        pdf.set_font(pdf.base_font_family, "", fonts["cover_meta_size"])
         pdf.multi_cell(0, 8, _safe_text(review_count_text), align="C", new_x="LMARGIN", new_y="NEXT")
 
 
@@ -111,12 +156,12 @@ def _add_review(pdf: FPDF, review: Review, index: int, total: int, config: dict[
     criteria_config = config["criteria"]
     labels = header["labels"]
 
-    pdf.set_font("DejaVu", "B", fonts["review_title_size"])
+    pdf.set_font(pdf.base_font_family, "B", fonts["review_title_size"])
     title = review.book_title or "Untitled book"
     pdf.multi_cell(0, 9, _safe_text(title), new_x="LMARGIN", new_y="NEXT")
 
     pdf.ln(spacing["before_review_meta"])
-    pdf.set_font("DejaVu", "", fonts["meta_size"])
+    pdf.set_font(pdf.base_font_family, "", fonts["meta_size"])
 
     _add_reviewer_and_counter_line(pdf, review, index, total, header, labels)
     if header["show_timestamp"] and review.timestamp:
@@ -135,10 +180,10 @@ def _add_review(pdf: FPDF, review: Review, index: int, total: int, config: dict[
         _add_criterion_header(pdf, criterion.name, criterion.score, config)
 
         if has_comment:
-            pdf.set_font("DejaVu", "", fonts["body_size"])
+            pdf.set_font(pdf.base_font_family, "", fonts["body_size"])
             pdf.multi_cell(0, 6, _safe_text(criterion.comment), new_x="LMARGIN", new_y="NEXT")
         else:
-            pdf.set_font("DejaVu", "I", fonts["body_size"])
+            pdf.set_font(pdf.base_font_family, "I", fonts["body_size"])
             pdf.multi_cell(0, 6, _safe_text(criteria_config["empty_comment_text"]), new_x="LMARGIN", new_y="NEXT")
 
         pdf.ln(spacing["between_criteria"])
@@ -167,9 +212,6 @@ def _add_reviewer_and_counter_line(
         current_y = pdf.get_y()
         gap = 6
 
-        pdf.set_xy(left_x, current_y)
-        pdf.cell(0, 7, _safe_text(reviewer_text), new_x="LMARGIN", new_y="NEXT")
-
         counter_width = pdf.get_string_width(_safe_text(counter_text)) + 1
         available_width = max(20, right_limit - left_x - gap)
         reviewer_width = max(20, available_width - counter_width)
@@ -188,18 +230,16 @@ def _add_reviewer_and_counter_line(
 def _add_criterion_header(pdf: FPDF, criterion_name: str, score_value: str, config: dict[str, Any]) -> None:
     fonts = config["fonts"]
     criteria_config = config["criteria"]
-    label = criteria_config.get("score_label", "Score")
-    score_text = _format_score_display(score_value, criteria_config)
-    right_text = f"{label}: {score_text}"
+    right_text = _format_score_display(score_value, criteria_config)
 
     left_x = pdf.l_margin
     right_limit = pdf.w - pdf.r_margin
     current_y = pdf.get_y()
     gap = 6
 
-    pdf.set_font("DejaVu", "B", fonts["criterion_title_size"])
+    pdf.set_font(pdf.base_font_family, "B", fonts["criterion_title_size"])
 
-    right_width = pdf.get_string_width(_safe_text(right_text)) + 1
+    right_width = pdf.get_string_width(_safe_text(right_text)) + 2
     available_width = max(30, right_limit - left_x - gap)
     left_width = max(30, available_width - right_width)
 
@@ -224,18 +264,22 @@ def _format_score_display(value: str, criteria_config: dict[str, Any]) -> str:
     numeric_score = _parse_numeric_score(clean_value)
 
     if style == "numeric":
-        return clean_value
+        label = criteria_config.get("score_label", "Score")
+        return f"{label}: {clean_value}"
 
     if numeric_score is None:
         return clean_value
 
     stars_text = _score_to_stars(numeric_score, criteria_config)
+    numeric_text = _format_numeric_score(numeric_score)
+
     if style == "stars":
         return stars_text
     if style == "numeric_and_stars":
-        return f"{_format_numeric_score(numeric_score)} {stars_text}"
+        return f"{stars_text} {numeric_text}"
 
-    return clean_value
+    label = criteria_config.get("score_label", "Score")
+    return f"{label}: {clean_value}"
 
 
 def _score_to_stars(score: float, criteria_config: dict[str, Any]) -> str:
@@ -252,12 +296,11 @@ def _score_to_stars(score: float, criteria_config: dict[str, Any]) -> str:
     return (full * full_count) + (half * half_count) + (empty * empty_count)
 
 
-
-
 def _format_numeric_score(value: float) -> str:
     if float(value).is_integer():
         return str(int(value))
     return f"{value:.1f}"
+
 
 def _parse_numeric_score(value: str) -> float | None:
     cleaned = value.strip().replace(",", ".")
@@ -278,11 +321,11 @@ def _safe_text(text: str) -> str:
         "—": "-",
         "–": "-",
         "…": "...",
-        " ": " ",
-        " ": " ",
-        " ": " ",
-        "​": "",
-        "﻿": "",
+        "\xa0": " ",
+        "\u202f": " ",
+        "\u2009": " ",
+        "\u200b": "",
+        "\ufeff": "",
         "’": "'",
         "‘": "'",
         "“": '"',

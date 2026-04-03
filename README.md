@@ -43,7 +43,7 @@ Create and activate a virtual environment, then install dependencies:
 python -m venv .venv
 
 # Windows
-.venv\Scriptsctivate
+.venv\Scripts\activate
 
 # macOS / Linux
 source .venv/bin/activate
@@ -85,7 +85,7 @@ config.json -> output_pdf
 ## Notes
 
 - This keeps the code simple: configuration is external, but the review-loading logic still matches your current Google Forms CSV structure.
-- This MVP still uses `fpdf2` and core PDF fonts to keep setup simple.
+- This MVP uses `fpdf2` with bundled Unicode fonts inside the project so it does not depend on font paths installed on your system.
 - Unsupported characters such as emoji are removed from the PDF output.
 
 
@@ -93,3 +93,28 @@ Config notes:
 - `cover.title_text`: custom cover title
 - `cover.subtitle`: custom cover subtitle
 - `cover.review_count_format`: custom review count text. Use `{count}` as the placeholder.
+
+
+## Font configuration
+
+You can change the PDF fonts from `config.json` without touching the code:
+
+```json
+"fonts": {
+  "text": {
+    "family_name": "DejaVu",
+    "regular": "fonts/DejaVuSans.ttf",
+    "bold": "fonts/DejaVuSans-Bold.ttf",
+    "italic": "fonts/DejaVuSans-Oblique.ttf",
+    "fallback_core_family": "Helvetica"
+  },
+  "emoji": {
+    "family_name": "NotoEmoji",
+    "regular": "fonts/NotoColorEmoji.ttf",
+    "fallback_symbols": "fonts/NotoSansSymbols2-Regular.ttf",
+    "enabled": true
+  }
+}
+```
+
+If the configured font files are not found, the script falls back to a safe built-in PDF font.

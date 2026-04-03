@@ -35,7 +35,7 @@
   },
   "criteria": {
     "show_empty_comments": true,
-    "empty_comment_text": "No comment provided.",
+    "empty_comment_text": "Sin comentario.",
     "score_label": "Puntuación",
     "score_style": "numeric_and_stars",
     "star_symbols": {
@@ -46,6 +46,19 @@
     "star_scale_max": 10
   },
   "fonts": {
+    "text": {
+      "family_name": "DejaVu",
+      "regular": "fonts/DejaVuSans.ttf",
+      "bold": "fonts/DejaVuSans-Bold.ttf",
+      "italic": "fonts/DejaVuSans-Oblique.ttf",
+      "fallback_core_family": "Helvetica"
+    },
+    "emoji": {
+      "family_name": "NotoEmoji",
+      "regular": "fonts/NotoColorEmoji.ttf",
+      "fallback_symbols": "fonts/NotoSansSymbols2-Regular.ttf",
+      "enabled": true
+    },
     "cover_title_size": 22,
     "cover_meta_size": 13,
     "cover_subtitle_size": 11,
