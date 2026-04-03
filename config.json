@@ -1,7 +1,7 @@
 {
   "input_csv": "data/Alas de papel.csv",
   "output_pdf": "output/reviews_booklet.pdf",
-  "booklet_title": "Alas de papel",
+  "booklet_title": "Alas de papel — Review Booklet",
   "pdf": {
     "page_size": "A4",
     "orientation": "P",
@@ -18,7 +18,7 @@
     "enabled": true,
     "show_review_count": true,
     "subtitle": "Nuestro grupo de lectura",
-    "title_text": "Alas de papel",
+    "title_text": "Alas de papel — Review Booklet",
     "review_count_format": "Total reviews: {count}"
   },
   "header": {
@@ -36,7 +36,14 @@
   "criteria": {
     "show_empty_comments": true,
     "empty_comment_text": "No comment provided.",
-    "score_label": "Score"
+    "score_label": "Score",
+    "score_style": "stars",
+    "star_symbols": {
+      "full": "★",
+      "half": "⯨",
+      "empty": "☆"
+    },
+    "star_scale_max": 10
   },
   "fonts": {
     "cover_title_size": 22,
