@@ -1,7 +1,7 @@
 {
   "input_csv": "data/Alas de papel.csv",
   "output_pdf": "output/reviews_booklet.pdf",
-  "booklet_title": "Alas de papel — Review Booklet",
+  "booklet_title": "Alas de papel",
   "pdf": {
     "page_size": "A4",
     "orientation": "P",
@@ -18,8 +18,8 @@
     "enabled": true,
     "show_review_count": true,
     "subtitle": "Nuestro grupo de lectura",
-    "title_text": "Alas de papel — Review Booklet",
-    "review_count_format": "Total reviews: {count}"
+    "title_text": "Alas de papel",
+    "review_count_format": "Total de revisiones: {count}"
   },
   "header": {
     "show_review_counter": true,
@@ -27,17 +27,17 @@
     "show_timestamp": true,
     "show_average_score": true,
     "labels": {
-      "review_counter": "Review",
-      "reviewer_name": "Reviewer",
-      "timestamp": "Submitted",
-      "average_score": "Average score"
+      "review_counter": "Revisión",
+      "reviewer_name": "Revisado por",
+      "timestamp": "Fecha de revisión",
+      "average_score": "Puntuación media"
     }
   },
   "criteria": {
     "show_empty_comments": true,
     "empty_comment_text": "No comment provided.",
-    "score_label": "Score",
-    "score_style": "stars",
+    "score_label": "Puntuación",
+    "score_style": "numeric_and_stars",
     "star_symbols": {
       "full": "★",
       "half": "⯨",

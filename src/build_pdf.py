@@ -221,14 +221,21 @@ def _format_score_display(value: str, criteria_config: dict[str, Any]) -> str:
         return "-"
 
     style = criteria_config.get("score_style", "numeric")
-    if style != "stars":
+    numeric_score = _parse_numeric_score(clean_value)
+
+    if style == "numeric":
         return clean_value
 
-    numeric_score = _parse_numeric_score(clean_value)
     if numeric_score is None:
         return clean_value
 
-    return _score_to_stars(numeric_score, criteria_config)
+    stars_text = _score_to_stars(numeric_score, criteria_config)
+    if style == "stars":
+        return stars_text
+    if style == "numeric_and_stars":
+        return f"{_format_numeric_score(numeric_score)} {stars_text}"
+
+    return clean_value
 
 
 def _score_to_stars(score: float, criteria_config: dict[str, Any]) -> str:
@@ -244,6 +251,13 @@ def _score_to_stars(score: float, criteria_config: dict[str, Any]) -> str:
     empty_count = 5 - full_count - half_count
     return (full * full_count) + (half * half_count) + (empty * empty_count)
 
+
+
+
+def _format_numeric_score(value: float) -> str:
+    if float(value).is_integer():
+        return str(int(value))
+    return f"{value:.1f}"
 
 def _parse_numeric_score(value: str) -> float | None:
     cleaned = value.strip().replace(",", ".")
