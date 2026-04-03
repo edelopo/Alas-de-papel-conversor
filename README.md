@@ -1,24 +1,37 @@
-# Review Booklet MVP
+# Booklet Reviews MVP
 
-Small Python project to turn Google Forms / Google Sheets review responses exported as CSV into a PDF booklet.
+Minimal local Python script that reads a CSV exported from Google Forms / Google Sheets and generates a PDF booklet with all reviews.
 
-## What this MVP does
+## Current MVP behavior
 
-- reads one CSV file exported from Google Sheets
-- supports the current column structure in your file
-- generates one PDF booklet with all reviews in order
-- includes:
-  - reviewer name
+- reads the CSV from `data/Alas de papel.csv`
+- treats **one Google Form response as one review entry**
+- sorts entries by **book title**, then by **submission timestamp**
+- shows this header for each entry:
   - book title
+  - reviewer name
   - timestamp
-  - one section per review criterion with score + comment
+  - average numerical score across all criteria
+- prints each criterion as a block:
+  - criterion title
+  - numerical score
+  - written comment
 
 ## Project structure
 
-- `data/Alas de papel.csv`: input CSV
-- `src/load_reviews.py`: CSV loading and normalization
-- `src/build_pdf.py`: PDF generation
-- `src/main.py`: entry point
+```text
+booklet_reviews_mvp/
+├─ data/
+│  └─ Alas de papel.csv
+├─ output/
+│  └─ reviews_booklet.pdf
+├─ src/
+│  ├─ load_reviews.py
+│  ├─ build_pdf.py
+│  └─ main.py
+├─ requirements.txt
+└─ README.md
+```
 
 ## Setup
 
@@ -26,8 +39,10 @@ Create and activate a virtual environment, then install dependencies:
 
 ```bash
 python -m venv .venv
+
 # Windows
 .venv\Scripts\activate
+
 # macOS / Linux
 source .venv/bin/activate
 
@@ -36,28 +51,20 @@ pip install -r requirements.txt
 
 ## Run
 
-From the project root:
-
 ```bash
 python -m src.main
 ```
 
-That will read:
+## Output
 
-- `data/Alas de papel.csv`
+The generated PDF will be saved to:
 
-and create:
-
-- `output/reviews_booklet.pdf`
+```text
+output/reviews_booklet.pdf
+```
 
 ## Notes
 
-- This MVP expects the same column format as your current Google Forms export.
-- The reviews are kept in CSV order.
-- If later you want a cleaner visual design, we can add:
-  - cover page
-  - page numbers
-  - custom fonts
-  - colors
-  - section grouping
-  - configurable layout
+- This MVP uses `fpdf2` and core PDF fonts to keep setup simple.
+- Unsupported characters such as emoji are removed from the PDF output.
+- Later, the next natural improvement is adding a Unicode font so all characters are preserved.

@@ -62,7 +62,7 @@ def _add_cover_page(pdf: FPDF, booklet_title: str, review_count: int) -> None:
     pdf.multi_cell(
         0,
         7,
-        _safe_text("Generated from Google Forms / Google Sheets CSV export"),
+        _safe_text("Sorted by book title and submission timestamp"),
         align="C",
         new_x="LMARGIN",
         new_y="NEXT",
@@ -80,6 +80,8 @@ def _add_review(pdf: FPDF, review: Review, index: int, total: int) -> None:
     pdf.cell(0, 7, _safe_text(f"Reviewer: {review.reviewer_name or 'Unknown'}"), new_x="LMARGIN", new_y="NEXT")
     if review.timestamp:
         pdf.cell(0, 7, _safe_text(f"Submitted: {review.timestamp}"), new_x="LMARGIN", new_y="NEXT")
+    average_text = _format_average(review.average_score)
+    pdf.cell(0, 7, _safe_text(f"Average score: {average_text}"), new_x="LMARGIN", new_y="NEXT")
 
     pdf.ln(4)
 
@@ -96,6 +98,12 @@ def _add_review(pdf: FPDF, review: Review, index: int, total: int) -> None:
             pdf.multi_cell(0, 6, _safe_text("No comment provided."), new_x="LMARGIN", new_y="NEXT")
 
         pdf.ln(2)
+
+
+def _format_average(value: float | None) -> str:
+    if value is None:
+        return "-"
+    return f"{value:.1f}"
 
 
 def _safe_text(text: str) -> str:
