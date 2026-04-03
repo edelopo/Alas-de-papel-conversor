@@ -1,7 +1,7 @@
 {
   "input_csv": "data/Alas de papel.csv",
   "output_pdf": "output/reviews_booklet.pdf",
-  "booklet_title": "Alas de papel — Review Booklet",
+  "booklet_title": "Alas de papel",
   "pdf": {
     "page_size": "A4",
     "orientation": "P",
@@ -18,7 +18,7 @@
     "enabled": true,
     "show_review_count": true,
     "subtitle": "Nuestro grupo de lectura",
-    "title_text": "Alas de papel — Review Booklet",
+    "title_text": "Alas de papel",
     "review_count_format": "Total reviews: {count}"
   },
   "header": {
