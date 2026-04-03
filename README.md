@@ -1,8 +1,14 @@
-# booklet_reviews_mvp
+# Booklet reviews MVP
 
-Minimal local script that reads a CSV exported from Google Forms / Google Sheets and generates a PDF booklet of reviews.
+Small Python project for a reading group.
 
-## Run
+It takes review data exported from Google Forms / Google Sheets as CSV and generates a PDF booklet with all reviews in order.
+
+## Two ways to use it
+
+### 1. Simple app for non-technical users
+
+This is the recommended option.
 
 ```bash
 python -m venv .venv
@@ -12,49 +18,34 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
+streamlit run app.py
+```
+
+Then:
+- upload the CSV
+- choose the options from the sidebar
+- click **Generar PDF**
+- download the PDF
+
+Streamlit runs a local web app in your browser. Streamlit's basic workflow is to run a Python script with `streamlit run ...`, open a local server, and use widgets such as file uploaders and download buttons to interact with the app. citeturn0search10turn0search2turn0search0
+
+### 2. Script mode
+
+Still available for manual/local use:
+
+```bash
 python -m src.main
 ```
 
-## Files you edit
-
-- `data/Alas de papel.csv`
+This reads:
 - `config.json`
+- `data/Alas de papel.csv`
 
-## Friendly font setup
+And writes:
+- `output/reviews_booklet.pdf`
 
-The default setup already uses bundled fonts.
+## Notes
 
-### Recommended default
-
-```json
-"fonts": {
-  "selection": {
-    "preset": "bundled_dejavu",
-    "emoji_preset": "android_noto_color",
-    "allow_system_font_search": true,
-    "emoji_enabled": true,
-    "fallback_core_family": "Helvetica"
-  }
-}
-```
-
-- `bundled_dejavu` uses the text fonts inside `fonts/`
-- `android_noto_color` uses `NotoColorEmoji.ttf`, which matches the Google / Android emoji style
-- if the configured text font is not found, the script falls back to `Helvetica`
-- if the emoji font is missing, the PDF still generates, but some emoji may not render
-
-### Other text preset
-
-```json
-"preset": "core_helvetica"
-```
-
-### Custom fonts later
-
-Use:
-
-```json
-"preset": "custom"
-```
-
-and then fill `fonts.custom` with your own paths.
+- The app expects a CSV exported from Google Forms / Google Sheets with the same structure as the sample file.
+- The PDF keeps the current logic: one entry per response, ordered by book title and timestamp.
+- The app uses Streamlit widgets for text input, toggles, select boxes, file upload and file download. citeturn0search1turn0search3turn0search2turn0search0turn0search6
