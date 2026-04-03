@@ -84,10 +84,11 @@ def load_reviews(csv_path: str | Path) -> List[Review]:
             )
             for criterion_name, score_index, comment_index in CRITERIA_COLUMN_PAIRS
         ]
-        timestamp = _get_value(row, 0)
+        raw_timestamp = _get_value(row, 0)
+        parsed_timestamp = _parse_timestamp(raw_timestamp)
         review = Review(
-            timestamp=timestamp,
-            timestamp_sort_key=_parse_timestamp(timestamp),
+            timestamp=_format_timestamp_for_display(raw_timestamp, parsed_timestamp),
+            timestamp_sort_key=parsed_timestamp,
             reviewer_name=_get_value(row, 1),
             book_title=_get_value(row, 2),
             average_score=_compute_average_score(criteria),
@@ -140,6 +141,12 @@ def _parse_score(value: str) -> float | None:
         return float(value)
     except ValueError:
         return None
+
+
+def _format_timestamp_for_display(raw_value: str, parsed_value: datetime) -> str:
+    if parsed_value == datetime.max:
+        return raw_value
+    return parsed_value.strftime("%Y/%m/%d %H:%M:%S")
 
 
 def _parse_timestamp(value: str) -> datetime:

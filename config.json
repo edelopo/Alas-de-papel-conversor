@@ -17,7 +17,7 @@
   "cover": {
     "enabled": true,
     "show_review_count": true,
-    "subtitle": "Sorted by book title and submission timestamp"
+    "subtitle": "Nuestro grupo de lectura"
   },
   "header": {
     "show_review_counter": true,

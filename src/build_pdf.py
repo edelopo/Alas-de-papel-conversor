@@ -25,7 +25,7 @@ class ReviewBookletPDF(FPDF):
         font_size = self.config["fonts"]["header_footer_size"]
         self.set_y(-12)
         self.set_font("Helvetica", "I", font_size)
-        self.cell(0, 8, _safe_text(f"Page {self.page_no()}"), align="C")
+        self.cell(0, 8, _safe_text(str(self.page_no())), align="C")
 
 
 def build_pdf(
