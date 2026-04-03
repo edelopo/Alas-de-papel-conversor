@@ -48,4 +48,4 @@ And writes:
 
 - The app expects a CSV exported from Google Forms / Google Sheets with the same structure as the sample file.
 - The PDF keeps the current logic: one entry per response, ordered by book title and timestamp.
-- The app uses Streamlit widgets for text input, toggles, select boxes, file upload and file download. citeturn0search1turn0search3turn0search2turn0search0turn0search6
+- The app uses Streamlit widgets for text input, toggles, select boxes, file upload and file download.
