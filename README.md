@@ -1,115 +1,60 @@
-# Booklet Reviews MVP
+# booklet_reviews_mvp
 
-Minimal local Python script that reads a CSV exported from Google Forms / Google Sheets and generates a PDF booklet with all reviews.
-
-## Current behavior
-
-- reads the CSV path defined in `config.json`
-- treats **one Google Form response as one review entry**
-- sorts entries by **book title**, then by **submission timestamp**
-- shows this header for each entry:
-  - book title
-  - reviewer name
-  - timestamp
-  - average numerical score across all criteria
-- prints each criterion as a block:
-  - criterion title
-  - numerical score
-  - written comment
-
-## Project structure
-
-```text
-booklet_reviews_mvp/
-├─ config.json
-├─ data/
-│  └─ Alas de papel.csv
-├─ output/
-│  └─ reviews_booklet.pdf
-├─ src/
-│  ├─ config.py
-│  ├─ load_reviews.py
-│  ├─ build_pdf.py
-│  └─ main.py
-├─ requirements.txt
-└─ README.md
-```
-
-## Setup
-
-Create and activate a virtual environment, then install dependencies:
-
-```bash
-python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-
-# macOS / Linux
-source .venv/bin/activate
-
-pip install -r requirements.txt
-```
+Minimal local script that reads a CSV exported from Google Forms / Google Sheets and generates a PDF booklet of reviews.
 
 ## Run
 
 ```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
+
+pip install -r requirements.txt
 python -m src.main
 ```
 
-## Where to configure the PDF
+## Files you edit
 
-Edit only `config.json`.
+- `data/Alas de papel.csv`
+- `config.json`
 
-You can already change things like:
+## Friendly font setup
 
-- input CSV path
-- output PDF path
-- booklet title
-- cover page on/off
-- whether to show review count on the cover
-- whether each review starts on a new page
-- whether empty comment blocks are shown
-- margin sizes
-- font sizes
-- header labels such as `Reviewer`, `Submitted`, `Average score`, `Score`
+The default setup already uses bundled fonts.
 
-## Output
-
-The generated PDF will be saved to the path defined in:
-
-```text
-config.json -> output_pdf
-```
-
-## Notes
-
-- This keeps the code simple: configuration is external, but the review-loading logic still matches your current Google Forms CSV structure.
-- This MVP uses `fpdf2` with bundled Unicode fonts inside the project so it does not depend on font paths installed on your system.
-- Unsupported characters such as emoji are removed from the PDF output.
-
-
-Config notes:
-- `cover.title_text`: custom cover title
-- `cover.subtitle`: custom cover subtitle
-- `cover.review_count_format`: custom review count text. Use `{count}` as the placeholder.
-
-
-## Friendlier font selection
-
-You can now choose a font preset in `config.json` instead of editing font paths directly.
+### Recommended default
 
 ```json
 "fonts": {
   "selection": {
-    "preset": "bundled_dejavu"
+    "preset": "bundled_dejavu",
+    "emoji_preset": "android_noto_color",
+    "allow_system_font_search": true,
+    "emoji_enabled": true,
+    "fallback_core_family": "Helvetica"
   }
 }
 ```
 
-Available presets:
-- `bundled_dejavu`: uses the bundled project fonts and keeps good Unicode support
-- `core_helvetica`: uses a built-in PDF font with no external font files
-- `custom`: lets you provide your own font file paths in `fonts.custom`
+- `bundled_dejavu` uses the text fonts inside `fonts/`
+- `android_noto_color` uses `NotoColorEmoji.ttf`, which matches the Google / Android emoji style
+- if the configured text font is not found, the script falls back to `Helvetica`
+- if the emoji font is missing, the PDF still generates, but some emoji may not render
 
-If the selected font files are not found, the script falls back to the safe core font configured in `fonts.selection.fallback_core_family`.
+### Other text preset
+
+```json
+"preset": "core_helvetica"
+```
+
+### Custom fonts later
+
+Use:
+
+```json
+"preset": "custom"
+```
+
+and then fill `fonts.custom` with your own paths.

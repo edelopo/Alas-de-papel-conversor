@@ -9,7 +9,7 @@ from typing import Any
 DEFAULT_CONFIG: dict[str, Any] = {
     "input_csv": "data/Alas de papel.csv",
     "output_pdf": "output/reviews_booklet.pdf",
-    "booklet_title": "Reading Group Reviews",
+    "booklet_title": "Alas de papel",
     "pdf": {
         "page_size": "A4",
         "orientation": "P",
@@ -20,7 +20,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "cover": {
         "enabled": True,
         "show_review_count": True,
-        "subtitle": "Sorted by book title and submission timestamp",
+        "title_text": "Alas de papel",
+        "subtitle": "Nuestro grupo de lectura",
+        "review_count_format": "Total de revisiones: {count}",
     },
     "header": {
         "show_review_counter": True,
@@ -28,20 +30,28 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "show_timestamp": True,
         "show_average_score": True,
         "labels": {
-            "review_counter": "Review",
-            "reviewer_name": "Reviewer",
-            "timestamp": "Submitted",
-            "average_score": "Average score",
+            "review_counter": "Revisión",
+            "reviewer_name": "Revisado por",
+            "timestamp": "Fecha de revisión",
+            "average_score": "Puntuación media",
         },
     },
     "criteria": {
         "show_empty_comments": True,
-        "empty_comment_text": "No comment provided.",
-        "score_label": "Score",
+        "empty_comment_text": "Sin comentario.",
+        "score_label": "Puntuación",
+        "score_style": "numeric_and_stars",
+        "star_symbols": {
+            "full": "★",
+            "half": "⯨",
+            "empty": "☆",
+        },
+        "star_scale_max": 10,
     },
     "fonts": {
         "selection": {
             "preset": "bundled_dejavu",
+            "emoji_preset": "android_noto_color",
             "allow_system_font_search": True,
             "emoji_enabled": True,
             "fallback_core_family": "Helvetica",
@@ -56,13 +66,24 @@ DEFAULT_CONFIG: dict[str, Any] = {
             },
             "core_helvetica": {
                 "use_core_font": "Helvetica",
+                "symbol_fallback": "fonts/NotoSansSymbols2-Regular.ttf",
             },
+        },
+        "emoji_presets": {
+            "android_noto_color": {
+                "family_name": "NotoColorEmoji",
+                "regular": "fonts/NotoColorEmoji.ttf",
+                "symbol_fallback": "fonts/NotoSansSymbols2-Regular.ttf",
+            },
+            "none": {},
         },
         "custom": {
             "text_family_name": "CustomFont",
             "regular": "",
             "bold": "",
             "italic": "",
+            "emoji_family_name": "CustomEmoji",
+            "emoji_regular": "",
             "symbol_fallback": "",
         },
         "cover_title_size": 22,

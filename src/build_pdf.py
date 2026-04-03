@@ -10,18 +10,11 @@ from .load_reviews import Review
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SYSTEM_FONT_CANDIDATES = {
-    "DejaVuSans.ttf": [
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-    ],
-    "DejaVuSans-Bold.ttf": [
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
-    ],
-    "DejaVuSans-Oblique.ttf": [
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf"),
-    ],
-    "NotoSansSymbols2-Regular.ttf": [
-        Path("/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf"),
-    ],
+    "DejaVuSans.ttf": [Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")],
+    "DejaVuSans-Bold.ttf": [Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")],
+    "DejaVuSans-Oblique.ttf": [Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf")],
+    "NotoSansSymbols2-Regular.ttf": [Path("/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf")],
+    "NotoColorEmoji.ttf": [Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf")],
 }
 
 
@@ -33,6 +26,7 @@ class ReviewBookletPDF(FPDF):
         self._fonts_ready = False
         self.base_font_family = "Helvetica"
         self.symbol_font_family: str | None = None
+        self.emoji_font_family: str | None = None
         self._register_fonts()
 
     def _register_fonts(self) -> None:
@@ -53,12 +47,24 @@ class ReviewBookletPDF(FPDF):
             self.add_font(family_name, style="I", fname=str(italic))
             self.base_font_family = family_name
 
+        emoji_regular = font_plan.get("emoji_regular")
+        emoji_family_name = font_plan.get("emoji_family_name")
+        if emoji_regular and emoji_family_name:
+            self.add_font(emoji_family_name, style="", fname=str(emoji_regular))
+            self.emoji_font_family = emoji_family_name
+
         symbol_fallback = font_plan.get("symbol_fallback")
         if symbol_fallback:
             self.add_font("NotoSymbols", style="", fname=str(symbol_fallback))
             self.symbol_font_family = "NotoSymbols"
-            if self.config.get("fonts", {}).get("selection", {}).get("emoji_enabled", True):
-                self.set_fallback_fonts(["NotoSymbols"], exact_match=False)
+
+        fallback_fonts: list[str] = []
+        if self.config.get("fonts", {}).get("selection", {}).get("emoji_enabled", True) and self.emoji_font_family:
+            fallback_fonts.append(self.emoji_font_family)
+        if self.symbol_font_family:
+            fallback_fonts.append(self.symbol_font_family)
+        if fallback_fonts:
+            self.set_fallback_fonts(fallback_fonts, exact_match=False)
 
         self._fonts_ready = True
 
@@ -80,15 +86,18 @@ def _build_font_plan(config: dict[str, Any]) -> dict[str, Any]:
     fonts_config = config.get("fonts", {})
     selection = fonts_config.get("selection", {})
     preset_name = selection.get("preset", "bundled_dejavu")
+    emoji_preset_name = selection.get("emoji_preset", "android_noto_color")
     fallback_core_family = selection.get("fallback_core_family", "Helvetica")
+    allow_system_search = selection.get("allow_system_font_search", True)
 
-    preset_config = {}
     if preset_name == "custom":
-        preset_config = fonts_config.get("custom", {})
+        text_config = fonts_config.get("custom", {})
+        emoji_config = fonts_config.get("custom", {})
     else:
-        preset_config = fonts_config.get("presets", {}).get(preset_name, {})
+        text_config = fonts_config.get("presets", {}).get(preset_name, {})
+        emoji_config = fonts_config.get("emoji_presets", {}).get(emoji_preset_name, {})
 
-    core_font = preset_config.get("use_core_font")
+    core_font = text_config.get("use_core_font")
     if core_font:
         return {
             "base_font_family": core_font,
@@ -96,29 +105,30 @@ def _build_font_plan(config: dict[str, Any]) -> dict[str, Any]:
             "regular": None,
             "bold": None,
             "italic": None,
+            "emoji_family_name": emoji_config.get("family_name", "NotoColorEmoji"),
+            "emoji_regular": _resolve_font_path(
+                emoji_config.get("regular", text_config.get("emoji_regular", "")),
+                allow_system_search=allow_system_search,
+            ),
             "symbol_fallback": _resolve_font_path(
-                preset_config.get("symbol_fallback", "NotoSansSymbols2-Regular.ttf"),
-                allow_system_search=selection.get("allow_system_font_search", True),
+                emoji_config.get("symbol_fallback", text_config.get("symbol_fallback", "NotoSansSymbols2-Regular.ttf")),
+                allow_system_search=allow_system_search,
             ),
         }
 
-    family_name = preset_config.get("text_family_name", "DejaVu")
-    regular = _resolve_font_path(
-        preset_config.get("regular", "fonts/DejaVuSans.ttf"),
-        allow_system_search=selection.get("allow_system_font_search", True),
-    )
-    bold = _resolve_font_path(
-        preset_config.get("bold", "fonts/DejaVuSans-Bold.ttf"),
-        allow_system_search=selection.get("allow_system_font_search", True),
-    )
-    italic = _resolve_font_path(
-        preset_config.get("italic", "fonts/DejaVuSans-Oblique.ttf"),
-        allow_system_search=selection.get("allow_system_font_search", True),
-    )
+    family_name = text_config.get("text_family_name", "DejaVu")
+    regular = _resolve_font_path(text_config.get("regular", "fonts/DejaVuSans.ttf"), allow_system_search=allow_system_search)
+    bold = _resolve_font_path(text_config.get("bold", "fonts/DejaVuSans-Bold.ttf"), allow_system_search=allow_system_search)
+    italic = _resolve_font_path(text_config.get("italic", "fonts/DejaVuSans-Oblique.ttf"), allow_system_search=allow_system_search)
     symbol_fallback = _resolve_font_path(
-        preset_config.get("symbol_fallback", "fonts/NotoSansSymbols2-Regular.ttf"),
-        allow_system_search=selection.get("allow_system_font_search", True),
+        emoji_config.get("symbol_fallback", text_config.get("symbol_fallback", "fonts/NotoSansSymbols2-Regular.ttf")),
+        allow_system_search=allow_system_search,
     )
+    emoji_regular = _resolve_font_path(
+        emoji_config.get("regular", text_config.get("emoji_regular", "")),
+        allow_system_search=allow_system_search,
+    )
+    emoji_family_name = emoji_config.get("family_name", text_config.get("emoji_family_name", "NotoColorEmoji"))
 
     if regular and bold and italic:
         return {
@@ -127,6 +137,8 @@ def _build_font_plan(config: dict[str, Any]) -> dict[str, Any]:
             "regular": regular,
             "bold": bold,
             "italic": italic,
+            "emoji_family_name": emoji_family_name,
+            "emoji_regular": emoji_regular,
             "symbol_fallback": symbol_fallback,
         }
 
@@ -136,6 +148,8 @@ def _build_font_plan(config: dict[str, Any]) -> dict[str, Any]:
         "regular": None,
         "bold": None,
         "italic": None,
+        "emoji_family_name": emoji_family_name,
+        "emoji_regular": emoji_regular,
         "symbol_fallback": symbol_fallback,
     }
 
@@ -163,11 +177,7 @@ def _resolve_font_path(path_or_filename: str, allow_system_search: bool = True) 
     return None
 
 
-def build_pdf(
-    reviews: Iterable[Review],
-    output_path: str | Path,
-    config: dict[str, Any],
-) -> Path:
+def build_pdf(reviews: Iterable[Review], output_path: str | Path, config: dict[str, Any]) -> Path:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -261,14 +271,7 @@ def _add_review(pdf: FPDF, review: Review, index: int, total: int, config: dict[
         pdf.ln(spacing["between_criteria"])
 
 
-def _add_reviewer_and_counter_line(
-    pdf: FPDF,
-    review: Review,
-    index: int,
-    total: int,
-    header: dict[str, Any],
-    labels: dict[str, str],
-) -> None:
+def _add_reviewer_and_counter_line(pdf: FPDF, review: Review, index: int, total: int, header: dict[str, Any], labels: dict[str, str]) -> None:
     reviewer_text = ""
     if header["show_reviewer_name"]:
         reviewer = review.reviewer_name or "Unknown"
@@ -276,7 +279,7 @@ def _add_reviewer_and_counter_line(
 
     counter_text = ""
     if header["show_review_counter"]:
-        counter_text = f"{labels['review_counter']} {index} of {total}"
+        counter_text = f"{labels['review_counter']} {index} de {total}"
 
     if reviewer_text and counter_text:
         left_x = pdf.l_margin
