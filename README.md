@@ -27,7 +27,7 @@ Then:
 - click **Generar PDF**
 - download the PDF
 
-Streamlit runs a local web app in your browser. Streamlit's basic workflow is to run a Python script with `streamlit run ...`, open a local server, and use widgets such as file uploaders and download buttons to interact with the app. citeturn0search10turn0search2turn0search0
+Streamlit runs a local web app in your browser. Streamlit's basic workflow is to run a Python script with `streamlit run ...`, open a local server, and use widgets such as file uploaders and download buttons to interact with the app.
 
 ### 2. Script mode
 
