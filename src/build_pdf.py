@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from fpdf import FPDF
+from fpdf.enums import MethodReturnValue
 
 from .load_reviews import Review
 
@@ -313,7 +314,6 @@ def _add_criterion_header(pdf: FPDF, criterion_name: str, score_value: str, conf
 
     left_x = pdf.l_margin
     right_limit = pdf.w - pdf.r_margin
-    current_y = pdf.get_y()
     gap = 6
 
     pdf.set_font(pdf.base_font_family, "B", fonts["criterion_title_size"])
@@ -321,16 +321,52 @@ def _add_criterion_header(pdf: FPDF, criterion_name: str, score_value: str, conf
     right_width = pdf.get_string_width(_safe_text(right_text)) + 1
     available_width = max(30, right_limit - left_x - gap)
     left_width = max(30, available_width - right_width)
+    line_height = 7
+
+    header_height = _measure_multicell_height(
+        pdf,
+        left_width,
+        line_height,
+        _safe_text(criterion_name),
+    )
+    header_height = max(line_height, header_height)
+
+    # Keep the criterion name and its score on the same page.
+    # Also require room for at least the first line of the comment, so a
+    # criterion header is not stranded at the bottom of a page.
+    _ensure_vertical_space(pdf, header_height + 6)
+
+    current_y = pdf.get_y()
 
     pdf.set_xy(left_x, current_y)
-    pdf.multi_cell(left_width, 7, _safe_text(criterion_name), border=0, align="L")
-    end_y = pdf.get_y()
-    used_lines = max(1, round((end_y - current_y) / 7))
-    total_height = used_lines * 7
+    pdf.multi_cell(left_width, line_height, _safe_text(criterion_name), border=0, align="L")
 
     pdf.set_xy(left_x + left_width + gap, current_y)
-    pdf.cell(max(10, right_limit - (left_x + left_width + gap)), total_height, _safe_text(right_text), align="R")
-    pdf.set_y(current_y + total_height)
+    pdf.cell(
+        max(10, right_limit - (left_x + left_width + gap)),
+        header_height,
+        _safe_text(right_text),
+        align="R",
+    )
+    pdf.set_y(current_y + header_height)
+
+
+def _measure_multicell_height(pdf: FPDF, width: float, line_height: float, text: str) -> float:
+    return float(
+        pdf.multi_cell(
+            width,
+            line_height,
+            text,
+            dry_run=True,
+            output=MethodReturnValue.HEIGHT,
+        )
+    )
+
+
+def _ensure_vertical_space(pdf: FPDF, needed_height: float) -> None:
+    bottom_limit = pdf.h - pdf.b_margin
+    if pdf.get_y() + needed_height > bottom_limit:
+        pdf.add_page()
 
 
 def _format_score_display(value: str, criteria_config: dict[str, Any]) -> str:
