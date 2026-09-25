@@ -16,7 +16,7 @@ const FILE_INPUT = document.querySelector('#csv-input');
 const FILE_STATUS = document.querySelector('#file-status');
 const GENERATE_BUTTON = document.querySelector('#generate-button');
 const MESSAGE = document.querySelector('#message');
-const APP_VERSION = 'v0.5.0';
+const APP_VERSION = 'v0.5.1';
 let parsedReviews = null;
 let selectedFileName = 'reviews';
 
@@ -223,9 +223,7 @@ function renderReviewCanvases(review, index, total, title, showEmpty, pages) {
     if (y > 1600) startPage();
     context.fillStyle = '#24302d';
     y = drawWrapped(context, criterion.name, left, y, 760, lineHeight, '600 21px Arial, sans-serif');
-    context.textAlign = 'right';
-    context.font = '22px Arial, sans-serif';
-    context.fillText(renderStars(criterion.score).replace(/<[^>]+>/g, ''), right, y - lineHeight);
+    drawCanvasScore(context, criterion.score, right, y - lineHeight);
     context.textAlign = 'left';
     y += 7;
     context.fillStyle = '#24302d';
@@ -261,6 +259,56 @@ function drawWrapped(context, text, x, y, width, lineHeight, font) {
   return y;
 }
 
+function drawCanvasScore(context, value, right, baseline) {
+  const numeric = Number.parseFloat(String(value).replace(',', '.'));
+  const numericText = Number.isNaN(numeric) ? (value || '-') : (Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1));
+  const score = Number.isNaN(numeric) ? 0 : Math.max(0, Math.min(10, numeric));
+  const fullStars = Math.floor(score / 2);
+  const hasHalfStar = score % 2 >= 1;
+  const starSize = 20;
+  const starGap = 5;
+  const starsWidth = (starSize * 5) + (starGap * 4);
+  context.font = '22px Arial, sans-serif';
+  const numberWidth = context.measureText(numericText).width;
+  const starsLeft = right - numberWidth - 18 - starsWidth;
+  for (let index = 0; index < 5; index += 1) {
+    const starX = starsLeft + index * (starSize + starGap) + starSize / 2;
+    const starY = baseline - 8;
+    if (index < fullStars) drawCanvasStar(context, starX, starY, starSize / 2, 'full');
+    else if (index === fullStars && hasHalfStar) drawCanvasStar(context, starX, starY, starSize / 2, 'half');
+    else drawCanvasStar(context, starX, starY, starSize / 2, 'empty');
+  }
+  context.fillStyle = '#24302d';
+  context.textAlign = 'right';
+  context.font = '22px Arial, sans-serif';
+  context.fillText(numericText, right, baseline);
+  context.textAlign = 'left';
+}
+
+function drawCanvasStar(context, centerX, centerY, radius, fillMode) {
+  const points = [];
+  for (let index = 0; index < 10; index += 1) {
+    const angle = -Math.PI / 2 + (index * Math.PI / 5);
+    const distance = index % 2 === 0 ? radius : radius * 0.43;
+    points.push([centerX + Math.cos(angle) * distance, centerY + Math.sin(angle) * distance]);
+  }
+  context.save();
+  context.beginPath();
+  points.forEach(([x, y], index) => index === 0 ? context.moveTo(x, y) : context.lineTo(x, y));
+  context.closePath();
+  context.lineWidth = 2;
+  context.strokeStyle = '#d45535';
+  context.fillStyle = '#d45535';
+  if (fillMode === 'half') {
+    context.save();
+    context.clip();
+    context.fillRect(centerX - radius, centerY - radius, radius, radius * 2);
+    context.restore();
+  } else if (fillMode === 'full') context.fill();
+  context.stroke();
+  context.restore();
+}
+
 function hasInk(canvas) {
   const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
   for (let index = 0; index < pixels.length; index += 32) {
@@ -294,8 +342,10 @@ function buildReviewMarkup(review, index, total, showEmpty, bookletTitle) {
 function renderStars(value) {
   const numeric = Number.parseFloat(String(value).replace(',', '.'));
   if (Number.isNaN(numeric)) return '<span class="stars">☆☆☆☆☆</span>';
-  const full = Math.floor(Math.max(0, Math.min(10, Math.round(numeric))) / 2);
-  return `<span class="stars" aria-label="${numeric} de 10">${'★'.repeat(full)}${'☆'.repeat(5 - full)}</span>`;
+  const score = Math.max(0, Math.min(10, numeric));
+  const full = Math.floor(score / 2);
+  const half = score % 2 >= 1 ? '<span class="half-star">★</span>' : '';
+  return `<span class="stars" aria-label="${numeric} de 10">${'★'.repeat(full)}${half}${'☆'.repeat(5 - full - (half ? 1 : 0))}</span>`;
 }
 
 function escapeHtml(value) {
@@ -303,7 +353,7 @@ function escapeHtml(value) {
 }
 
 function printStyles() {
-  return `@page{size:A4;margin:16mm}*{box-sizing:border-box}body{margin:0;color:#24302d;font-family:"Segoe UI","Noto Sans",Arial,sans-serif;font-size:11pt;line-height:1.38}.cover{height:265mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always}.cover h1{font-family:Georgia,serif;font-size:30pt;margin:0 0 12mm}.cover p{font-style:italic;font-size:13pt}.cover small{margin-top:8mm;font-size:11pt}.review{page-break-before:always}.review header{display:flex;justify-content:space-between;color:#6b7771;font-size:9pt;font-style:italic;border-bottom:1px solid #dfe3da;padding-bottom:3mm;margin-bottom:7mm}.review h2{font-family:Georgia,serif;font-size:18pt;margin:0 0 2mm}.meta{font-size:10pt;color:#52605a;margin:0 0 7mm}.criterion{break-inside:avoid;margin:0 0 4mm}.criterion-heading{display:flex;justify-content:space-between;gap:8mm;align-items:baseline;font-size:11pt}.criterion-heading strong{max-width:75%}.score{white-space:nowrap}.stars{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;letter-spacing:.03em}.score b{font-weight:500}.comment{margin:1mm 0 0;white-space:normal}`;
+  return `@page{size:A4;margin:16mm}*{box-sizing:border-box}body{margin:0;color:#24302d;font-family:"Segoe UI","Noto Sans",Arial,sans-serif;font-size:11pt;line-height:1.38}.cover{height:265mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always}.cover h1{font-family:Georgia,serif;font-size:30pt;margin:0 0 12mm}.cover p{font-style:italic;font-size:13pt}.cover small{margin-top:8mm;font-size:11pt}.review{page-break-before:always}.review header{display:flex;justify-content:space-between;color:#6b7771;font-size:9pt;font-style:italic;border-bottom:1px solid #dfe3da;padding-bottom:3mm;margin-bottom:7mm}.review h2{font-family:Georgia,serif;font-size:18pt;margin:0 0 2mm}.meta{font-size:10pt;color:#52605a;margin:0 0 7mm}.criterion{break-inside:avoid;margin:0 0 4mm}.criterion-heading{display:flex;justify-content:space-between;gap:8mm;align-items:baseline;font-size:11pt}.criterion-heading strong{max-width:75%}.score{white-space:nowrap}.stars{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;letter-spacing:.03em}.half-star{background:linear-gradient(90deg,#d45535 50%,#fff 50%);background-clip:text;-webkit-background-clip:text;color:transparent}.score b{font-weight:500}.comment{margin:1mm 0 0;white-space:normal}`;
 }
 
 function formatScore(value) {
