@@ -113,24 +113,31 @@ function generatePdf() {
   GENERATE_BUTTON.disabled = true;
   MESSAGE.className = 'message';
   MESSAGE.textContent = 'Preparando la vista para guardar como PDF...';
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    MESSAGE.className = 'message error';
-    MESSAGE.textContent = 'El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes para esta página.';
-    GENERATE_BUTTON.disabled = false;
-    return;
-  }
-
   const bookletTitle = document.querySelector('#booklet-title').value.trim() || 'Alas de papel';
   const coverTitle = document.querySelector('#cover-title').value.trim() || bookletTitle;
   const subtitle = document.querySelector('#cover-subtitle').value.trim();
   const showEmpty = document.querySelector('#show-empty').checked;
-  printWindow.document.write(buildPrintDocument(bookletTitle, coverTitle, subtitle, parsedReviews, showEmpty));
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.onload = () => printWindow.print();
-  MESSAGE.textContent = 'Vista de impresión abierta. Elige «Guardar como PDF» en el destino de impresión.';
+  const printDocument = buildPrintDocument(bookletTitle, coverTitle, subtitle, parsedReviews, showEmpty);
+  const parser = new DOMParser();
+  const parsedDocument = parser.parseFromString(printDocument, 'text/html');
+  const printRoot = document.createElement('div');
+  printRoot.id = 'print-root';
+  printRoot.innerHTML = `<div class="print-actions"><button id="print-now" type="button">Imprimir / Guardar PDF</button><button id="close-print-preview" type="button">Volver</button></div>${parsedDocument.body.innerHTML}`;
+  document.body.appendChild(printRoot);
+  document.body.classList.add('previewing');
+  printRoot.querySelector('#print-now').addEventListener('click', () => {
+    document.body.classList.add('printing');
+    window.addEventListener('afterprint', finishPrint, { once: true });
+    window.print();
+  });
+  printRoot.querySelector('#close-print-preview').addEventListener('click', finishPrint);
+  MESSAGE.textContent = 'Vista previa lista. Comprueba el contenido y pulsa «Imprimir / Guardar PDF».';
   GENERATE_BUTTON.disabled = false;
+}
+
+function finishPrint() {
+  document.body.classList.remove('previewing', 'printing');
+  document.querySelector('#print-root')?.remove();
 }
 
 function buildPrintDocument(bookletTitle, coverTitle, subtitle, reviews, showEmpty) {
