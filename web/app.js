@@ -16,8 +16,12 @@ const FILE_INPUT = document.querySelector('#csv-input');
 const FILE_STATUS = document.querySelector('#file-status');
 const GENERATE_BUTTON = document.querySelector('#generate-button');
 const MESSAGE = document.querySelector('#message');
+const APP_VERSION = 'v0.4.0';
 let parsedReviews = null;
 let selectedFileName = 'reviews';
+
+document.querySelector('#app-version').textContent = APP_VERSION;
+document.querySelector('#footer-version').textContent = APP_VERSION;
 
 FILE_INPUT.addEventListener('change', (event) => handleFile(event.target.files[0]));
 ['dragenter', 'dragover'].forEach((eventName) => DROP_ZONE.addEventListener(eventName, (event) => {
@@ -122,7 +126,8 @@ function generatePdf() {
   const parsedDocument = parser.parseFromString(printDocument, 'text/html');
   const printRoot = document.createElement('div');
   printRoot.id = 'print-root';
-  printRoot.innerHTML = `<div class="print-actions"><button id="print-now" type="button">Imprimir / Guardar PDF</button><button id="close-print-preview" type="button">Volver</button></div>${parsedDocument.body.innerHTML}`;
+  const printCss = parsedDocument.head.querySelector('style')?.textContent || '';
+  printRoot.innerHTML = `<style>${printCss}</style><div class="print-actions"><button id="print-now" type="button">Imprimir / Guardar PDF</button><button id="close-print-preview" type="button">Volver</button></div>${parsedDocument.body.innerHTML}`;
   document.body.appendChild(printRoot);
   document.body.classList.add('previewing');
   printRoot.querySelector('#print-now').addEventListener('click', () => {
