@@ -61,4 +61,4 @@ To publish it from GitHub:
 3. Select the `main` branch and the `/ (root)` folder.
 4. Open the generated Pages URL.
 
-The web app builds the booklet as HTML, captures the browser-rendered result, and downloads a PDF directly. Stars and emojis are rasterized from the browser view, avoiding PDF font-encoding problems and Firefox's native print preview. The Python/Streamlit app remains available locally.
+The web app builds the booklet as HTML, renders each PDF page on a browser canvas, validates that every page contains visible pixels, and downloads a PDF directly. Stars and emojis are rasterized by the browser, avoiding PDF font-encoding problems and Firefox's native print preview. The Python/Streamlit app remains available locally.

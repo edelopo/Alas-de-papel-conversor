@@ -16,7 +16,7 @@ const FILE_INPUT = document.querySelector('#csv-input');
 const FILE_STATUS = document.querySelector('#file-status');
 const GENERATE_BUTTON = document.querySelector('#generate-button');
 const MESSAGE = document.querySelector('#message');
-const APP_VERSION = 'v0.4.0';
+const APP_VERSION = 'v0.5.0';
 let parsedReviews = null;
 let selectedFileName = 'reviews';
 
@@ -138,35 +138,19 @@ function generatePdf() {
 
 async function downloadPdfFromPreview() {
   const button = document.querySelector('#download-pdf');
-  const content = document.querySelector('#print-content');
-  if (!button || !content) return;
+  if (!button) return;
   button.disabled = true;
   button.textContent = 'Preparando PDF...';
   try {
-    const canvas = await window.html2canvas(content, {
-      backgroundColor: '#ffffff',
-      scale: 1.5,
-      useCORS: true,
-      logging: false,
-    });
-    const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const imageHeight = pageWidth * canvas.height / canvas.width;
-    let offset = 0;
-    let pageIndex = 0;
-    while (offset < imageHeight) {
-      if (pageIndex > 0) pdf.addPage();
-      const sourceY = Math.floor(offset * canvas.width / pageWidth);
-      const sourceHeight = Math.min(canvas.height - sourceY, Math.ceil(pageHeight * canvas.width / pageWidth));
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = sourceHeight;
-      pageCanvas.getContext('2d').drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
-      pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageWidth, sourceHeight * pageWidth / canvas.width);
-      offset += pageHeight;
-      pageIndex += 1;
+    const pages = renderBookletCanvases(parsedReviews);
+    if (!pages.length || pages.some((canvas) => canvas.width === 0 || canvas.height === 0 || !hasInk(canvas))) {
+      throw new Error('La vista no contiene contenido visible.');
     }
+    const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    pages.forEach((canvas, index) => {
+      if (index > 0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+    });
     const title = document.querySelector('#booklet-title').value.trim() || 'Alas de papel';
     pdf.save(`${safeFilename(title)}.pdf`);
     MESSAGE.textContent = `PDF descargado: ${parsedReviews.length} revisiones procesadas.`;
@@ -177,6 +161,112 @@ async function downloadPdfFromPreview() {
     button.disabled = false;
     button.textContent = 'Descargar PDF';
   }
+}
+
+function renderBookletCanvases(reviews) {
+  const pages = [];
+  const includeCover = document.querySelector('#include-cover').checked;
+  const showEmpty = document.querySelector('#show-empty').checked;
+  const title = document.querySelector('#booklet-title').value.trim() || 'Alas de papel';
+  if (includeCover) {
+    const canvas = newCanvas();
+    const context = canvas.getContext('2d');
+    context.textAlign = 'center';
+    context.fillStyle = '#24302d';
+    context.font = '600 48px Georgia, serif';
+    context.fillText(document.querySelector('#cover-title').value.trim() || title, 620, 520);
+    context.font = 'italic 25px Georgia, serif';
+    context.fillText(document.querySelector('#cover-subtitle').value.trim(), 620, 575);
+    context.font = '22px Arial, sans-serif';
+    context.fillText(`Total de revisiones: ${reviews.length}`, 620, 630);
+    pages.push(canvas);
+  }
+  reviews.forEach((review, index) => renderReviewCanvases(review, index + 1, reviews.length, title, showEmpty, pages));
+  return pages;
+}
+
+function newCanvas() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1240;
+  canvas.height = 1754;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+function renderReviewCanvases(review, index, total, title, showEmpty, pages) {
+  let canvas = newCanvas();
+  let context = canvas.getContext('2d');
+  let y = 75;
+  const left = 95;
+  const right = 1145;
+  const lineHeight = 28;
+  const startPage = () => {
+    pages.push(canvas);
+    canvas = newCanvas();
+    context = canvas.getContext('2d');
+    y = 75;
+    drawHeader(context, title, index, total);
+  };
+  drawHeader(context, title, index, total);
+  context.fillStyle = '#24302d';
+  context.textAlign = 'left';
+  context.font = '600 34px Georgia, serif';
+  y = drawWrapped(context, review.bookTitle || 'Libro sin título', left, y, right - left, 40, '600 34px Georgia, serif');
+  context.fillStyle = '#52605a';
+  y += 12;
+  y = drawWrapped(context, `Revisado por: ${review.reviewerName || 'Desconocido'} · ${review.timestamp} · Media: ${review.averageScore === null ? '-' : review.averageScore.toFixed(1)}`, left, y, right - left, 24, '20px Arial, sans-serif');
+  y += 30;
+  review.criteria.forEach((criterion) => {
+    if (!showEmpty && !criterion.comment) return;
+    if (y > 1600) startPage();
+    context.fillStyle = '#24302d';
+    y = drawWrapped(context, criterion.name, left, y, 760, lineHeight, '600 21px Arial, sans-serif');
+    context.textAlign = 'right';
+    context.font = '22px Arial, sans-serif';
+    context.fillText(renderStars(criterion.score).replace(/<[^>]+>/g, ''), right, y - lineHeight);
+    context.textAlign = 'left';
+    y += 7;
+    context.fillStyle = '#24302d';
+    y = drawWrapped(context, criterion.comment || 'Sin comentario.', left, y, right - left, lineHeight, '20px "Segoe UI Emoji", "Noto Color Emoji", Arial, sans-serif');
+    y += 22;
+  });
+  pages.push(canvas);
+}
+
+function drawHeader(context, title, index, total) {
+  context.fillStyle = '#6b7771';
+  context.font = 'italic 17px Arial, sans-serif';
+  context.textAlign = 'left';
+  context.fillText(title, 95, 38);
+  context.textAlign = 'right';
+  context.fillText(`${index} / ${total}`, 1145, 38);
+  context.textAlign = 'left';
+}
+
+function drawWrapped(context, text, x, y, width, lineHeight, font) {
+  context.font = font;
+  const words = String(text).split(/\s+/);
+  let line = '';
+  words.forEach((word) => {
+    const candidate = line ? `${line} ${word}` : word;
+    if (context.measureText(candidate).width > width && line) {
+      context.fillText(line, x, y);
+      y += lineHeight;
+      line = word;
+    } else line = candidate;
+  });
+  if (line) { context.fillText(line, x, y); y += lineHeight; }
+  return y;
+}
+
+function hasInk(canvas) {
+  const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let index = 0; index < pixels.length; index += 32) {
+    if (pixels[index] < 245 || pixels[index + 1] < 245 || pixels[index + 2] < 245) return true;
+  }
+  return false;
 }
 
 function finishPrint() {
