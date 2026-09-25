@@ -18,7 +18,6 @@ const GENERATE_BUTTON = document.querySelector('#generate-button');
 const MESSAGE = document.querySelector('#message');
 let parsedReviews = null;
 let selectedFileName = 'reviews';
-let bundledFontsPromise;
 
 FILE_INPUT.addEventListener('change', (event) => handleFile(event.target.files[0]));
 ['dragenter', 'dragover'].forEach((eventName) => DROP_ZONE.addEventListener(eventName, (event) => {
@@ -115,9 +114,8 @@ function generatePdf() {
   MESSAGE.textContent = 'Preparando el PDF...';
   requestAnimationFrame(async () => {
     try {
-      const fonts = await loadBundledFonts();
       const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      configurePdf(pdf, fonts);
+      configurePdf(pdf, false);
       renderPdf(pdf, parsedReviews);
       const title = document.querySelector('#booklet-title').value.trim() || 'Alas de papel';
       pdf.save(`${safeFilename(title)}.pdf`);
@@ -129,27 +127,6 @@ function generatePdf() {
       GENERATE_BUTTON.disabled = false;
     }
   });
-}
-
-async function loadBundledFonts() {
-  if (!bundledFontsPromise) bundledFontsPromise = Promise.all([
-    addFontToJsPdf('DejaVu', 'normal', 'fonts/DejaVuSans.ttf'),
-    addFontToJsPdf('DejaVu', 'bold', 'fonts/DejaVuSans-Bold.ttf'),
-    addFontToJsPdf('DejaVu', 'italic', 'fonts/DejaVuSans-Oblique.ttf'),
-  ]).then(() => true).catch(() => false);
-  return bundledFontsPromise;
-}
-
-async function addFontToJsPdf(family, style, path) {
-  const response = await fetch(path);
-  if (!response.ok) throw new Error('fuente no disponible');
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  let binary = '';
-  for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
-  const base64 = btoa(binary);
-  const filename = path.split('/').pop();
-  window._pdfFontData = window._pdfFontData || {};
-  window._pdfFontData[filename] = { family, style, base64 };
 }
 
 function configurePdf(pdf, fontsLoaded) {
