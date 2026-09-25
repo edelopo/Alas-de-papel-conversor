@@ -61,4 +61,4 @@ To publish it from GitHub:
 3. Select the `main` branch and the `/ (root)` folder.
 4. Open the generated Pages URL.
 
-The web app uses jsPDF's built-in PDF font and loads jsPDF from a public CDN. This keeps generation reliable even when the page is opened locally; the Python/Streamlit app remains available locally while the browser-generated PDF is compared with the current output.
+The web app uses jsPDF's built-in font for ordinary text and the bundled `NotoSansSymbols2` font for stars and emoji symbols. The symbol font is loaded only by the hosted HTTPS app; the Python/Streamlit app remains available locally while the browser-generated PDF is compared with the current output.

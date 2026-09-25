@@ -18,6 +18,7 @@ const GENERATE_BUTTON = document.querySelector('#generate-button');
 const MESSAGE = document.querySelector('#message');
 let parsedReviews = null;
 let selectedFileName = 'reviews';
+let symbolFontPromise;
 
 FILE_INPUT.addEventListener('change', (event) => handleFile(event.target.files[0]));
 ['dragenter', 'dragover'].forEach((eventName) => DROP_ZONE.addEventListener(eventName, (event) => {
@@ -114,8 +115,9 @@ function generatePdf() {
   MESSAGE.textContent = 'Preparando el PDF...';
   requestAnimationFrame(async () => {
     try {
+      const symbolFontLoaded = await loadSymbolFont();
       const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      configurePdf(pdf, false);
+      configurePdf(pdf, symbolFontLoaded);
       renderPdf(pdf, parsedReviews);
       const title = document.querySelector('#booklet-title').value.trim() || 'Alas de papel';
       pdf.save(`${safeFilename(title)}.pdf`);
@@ -129,16 +131,34 @@ function generatePdf() {
   });
 }
 
+async function loadSymbolFont() {
+  if (window.location.protocol === 'file:') return false;
+  if (!symbolFontPromise) symbolFontPromise = fetch('fonts/NotoSansSymbols2-Regular.ttf')
+    .then((response) => {
+      if (!response.ok) throw new Error('symbol font unavailable');
+      return response.arrayBuffer();
+    })
+    .then((buffer) => {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
+      return btoa(binary);
+    })
+    .then((base64) => {
+      window._symbolFontBase64 = base64;
+      return true;
+    })
+    .catch(() => false);
+  return symbolFontPromise;
+}
+
 function configurePdf(pdf, fontsLoaded) {
-  if (fontsLoaded) {
-    Object.values(window._pdfFontData).forEach(({ family, style, base64 }) => {
-      const filename = Object.keys(window._pdfFontData).find((key) => window._pdfFontData[key].base64 === base64);
-      pdf.addFileToVFS(filename, base64);
-      pdf.addFont(filename, family, style);
-    });
-    pdf.setFont('DejaVu', 'normal');
-  } else {
-    pdf.setFont('helvetica', 'normal');
+  pdf.setFont('helvetica', 'normal');
+  pdf.baseFontFamily = 'helvetica';
+  if (fontsLoaded && window._symbolFontBase64) {
+    pdf.addFileToVFS('NotoSansSymbols2-Regular.ttf', window._symbolFontBase64);
+    pdf.addFont('NotoSansSymbols2-Regular.ttf', 'Symbols', 'normal');
+    pdf.symbolFontFamily = 'Symbols';
   }
   pdf.setProperties({ title: document.querySelector('#booklet-title').value.trim() || 'Alas de papel', author: 'Alas de papel' });
 }
@@ -188,7 +208,7 @@ function renderReview(pdf, review, index, total, showEmpty) {
     pdf.setFont(font, 'bold'); pdf.setFontSize(12);
     const titleLines = pdf.splitTextToSize(criterion.name, 140);
     pdf.text(titleLines, left, y);
-    pdf.setFont(font, 'normal'); pdf.setFontSize(11); pdf.text(score, 194, y, { align: 'right' });
+    pdf.setFont(font, 'normal'); pdf.setFontSize(11); drawTextWithSymbols(pdf, score, 194, y, 'normal', 'right');
     y += Math.max(7, titleLines.length * 7);
     const text = criterion.comment || 'Sin comentario.';
     y = write(pdf, text, left, y, width, 6, 11, criterion.comment ? 'normal' : 'italic');
@@ -204,8 +224,26 @@ function addContinuationHeader(pdf) {
 function write(pdf, text, x, y, width, lineHeight, size, style) {
   pdf.setFontSize(size); pdf.setFont(pdf.getFont().fontName, style);
   const lines = pdf.splitTextToSize(safeText(text), width);
-  pdf.text(lines, x, y);
+  lines.forEach((line, index) => drawTextWithSymbols(pdf, line, x, y + (index * lineHeight), style));
   return y + lines.length * lineHeight;
+}
+
+function drawTextWithSymbols(pdf, text, x, y, style, align = 'left') {
+  const symbolPattern = /([\u{1F000}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27FF}\uFE0E\uFE0F])/u;
+  const segments = symbolPattern.test(text) ? text.split(symbolPattern).filter(Boolean) : [text];
+  let totalWidth = 0;
+  segments.forEach((segment) => {
+    const isSymbol = symbolPattern.test(segment) && Boolean(pdf.symbolFontFamily);
+    pdf.setFont(isSymbol ? pdf.symbolFontFamily : pdf.baseFontFamily, isSymbol ? 'normal' : style);
+    totalWidth += pdf.getTextWidth(segment);
+  });
+  let cursor = align === 'right' ? x - totalWidth : x;
+  segments.forEach((segment) => {
+    const isSymbol = symbolPattern.test(segment) && Boolean(pdf.symbolFontFamily);
+    pdf.setFont(isSymbol ? pdf.symbolFontFamily : pdf.baseFontFamily, isSymbol ? 'normal' : style);
+    pdf.text(segment, cursor, y);
+    cursor += pdf.getTextWidth(segment);
+  });
 }
 
 function formatScore(value) {
