@@ -66,11 +66,7 @@ body.previewing > *:not(#print-root) { display: none; }
 body.previewing #print-root { display: block; padding: 24px; background: #f8f6f0; }
 .print-actions { display: flex; gap: 10px; max-width: 794px; margin: 0 auto 22px; padding: 12px; border: 1px solid var(--line); background: var(--surface); }
 .print-actions button { padding: 10px 14px; border: 0; border-radius: 3px; color: white; background: var(--accent); font: 600 .82rem 'DM Sans', sans-serif; cursor: pointer; }
+.print-actions button:disabled { cursor: wait; opacity: .6; }
 .print-actions button + button { color: var(--ink); background: var(--sage); }
-@media print {
-  body.printing > *:not(#print-root) { display: none !important; }
-  body.printing #print-root { display: block; padding: 0; background: white; }
-  body.printing .print-actions { display: none; }
-}
 @media (max-width: 760px) { .shell { width: min(100% - 30px, 560px); padding-top: 30px; } .masthead { display: block; padding-bottom: 30px; } .privacy-note { display: inline-flex; margin-top: 24px; } .workspace { display: block; padding-top: 36px; } .side-column { margin-top: 40px; } }
 @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } .form-grid label.wide { grid-column: auto; } h1 { font-size: 3.7rem; } }

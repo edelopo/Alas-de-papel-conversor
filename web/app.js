@@ -127,17 +127,56 @@ function generatePdf() {
   const printRoot = document.createElement('div');
   printRoot.id = 'print-root';
   const printCss = parsedDocument.head.querySelector('style')?.textContent || '';
-  printRoot.innerHTML = `<style>${printCss}</style><div class="print-actions"><button id="print-now" type="button">Imprimir / Guardar PDF</button><button id="close-print-preview" type="button">Volver</button></div>${parsedDocument.body.innerHTML}`;
+  printRoot.innerHTML = `<style>${printCss}</style><div class="print-actions"><button id="download-pdf" type="button">Descargar PDF</button><button id="close-print-preview" type="button">Volver</button></div><div id="print-content">${parsedDocument.body.innerHTML}</div>`;
   document.body.appendChild(printRoot);
   document.body.classList.add('previewing');
-  printRoot.querySelector('#print-now').addEventListener('click', () => {
-    document.body.classList.add('printing');
-    window.addEventListener('afterprint', finishPrint, { once: true });
-    window.print();
-  });
+  printRoot.querySelector('#download-pdf').addEventListener('click', downloadPdfFromPreview);
   printRoot.querySelector('#close-print-preview').addEventListener('click', finishPrint);
-  MESSAGE.textContent = 'Vista previa lista. Comprueba el contenido y pulsa «Imprimir / Guardar PDF».';
+  MESSAGE.textContent = 'Vista previa lista. Comprueba el contenido y pulsa «Descargar PDF».';
   GENERATE_BUTTON.disabled = false;
+}
+
+async function downloadPdfFromPreview() {
+  const button = document.querySelector('#download-pdf');
+  const content = document.querySelector('#print-content');
+  if (!button || !content) return;
+  button.disabled = true;
+  button.textContent = 'Preparando PDF...';
+  try {
+    const canvas = await window.html2canvas(content, {
+      backgroundColor: '#ffffff',
+      scale: 1.5,
+      useCORS: true,
+      logging: false,
+    });
+    const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const imageHeight = pageWidth * canvas.height / canvas.width;
+    let offset = 0;
+    let pageIndex = 0;
+    while (offset < imageHeight) {
+      if (pageIndex > 0) pdf.addPage();
+      const sourceY = Math.floor(offset * canvas.width / pageWidth);
+      const sourceHeight = Math.min(canvas.height - sourceY, Math.ceil(pageHeight * canvas.width / pageWidth));
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sourceHeight;
+      pageCanvas.getContext('2d').drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+      pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageWidth, sourceHeight * pageWidth / canvas.width);
+      offset += pageHeight;
+      pageIndex += 1;
+    }
+    const title = document.querySelector('#booklet-title').value.trim() || 'Alas de papel';
+    pdf.save(`${safeFilename(title)}.pdf`);
+    MESSAGE.textContent = `PDF descargado: ${parsedReviews.length} revisiones procesadas.`;
+  } catch (error) {
+    MESSAGE.className = 'message error';
+    MESSAGE.textContent = `No se ha podido descargar el PDF: ${error.message}`;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Descargar PDF';
+  }
 }
 
 function finishPrint() {
