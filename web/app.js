@@ -18,7 +18,6 @@ const GENERATE_BUTTON = document.querySelector('#generate-button');
 const MESSAGE = document.querySelector('#message');
 let parsedReviews = null;
 let selectedFileName = 'reviews';
-let symbolFontPromise;
 
 FILE_INPUT.addEventListener('change', (event) => handleFile(event.target.files[0]));
 ['dragenter', 'dragover'].forEach((eventName) => DROP_ZONE.addEventListener(eventName, (event) => {
@@ -42,7 +41,8 @@ function handleFile(file) {
       try {
         parsedReviews = parseRows(parseCsv(text));
         GENERATE_BUTTON.disabled = parsedReviews.length === 0;
-        FILE_STATUS.textContent = `${file.name} · ${parsedReviews.length} ${parsedReviews.length === 1 ? 'revisión encontrada' : 'revisiones encontradas'}`;
+        FILE_STATUS.className = 'file-status loaded';
+        FILE_STATUS.textContent = `✓ ${file.name} · ${parsedReviews.length} ${parsedReviews.length === 1 ? 'revisión encontrada' : 'revisiones encontradas'}`;
         if (!parsedReviews.length) throw new Error('El archivo no contiene ninguna revisión.');
       } catch (error) {
         parsedReviews = null;
@@ -112,138 +112,57 @@ function generatePdf() {
   if (!parsedReviews) return;
   GENERATE_BUTTON.disabled = true;
   MESSAGE.className = 'message';
-  MESSAGE.textContent = 'Preparando el PDF...';
-  requestAnimationFrame(async () => {
-    try {
-      const symbolFontLoaded = await loadSymbolFont();
-      const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      configurePdf(pdf, symbolFontLoaded);
-      renderPdf(pdf, parsedReviews);
-      const title = document.querySelector('#booklet-title').value.trim() || 'Alas de papel';
-      pdf.save(`${safeFilename(title)}.pdf`);
-      MESSAGE.textContent = `PDF listo: ${parsedReviews.length} revisiones procesadas.`;
-    } catch (error) {
-      MESSAGE.className = 'message error';
-      MESSAGE.textContent = `No se ha podido generar el PDF: ${error.message}`;
-    } finally {
-      GENERATE_BUTTON.disabled = false;
-    }
-  });
-}
-
-async function loadSymbolFont() {
-  if (window.location.protocol === 'file:') return false;
-  if (!symbolFontPromise) symbolFontPromise = fetch('fonts/NotoSansSymbols2-Regular.ttf')
-    .then((response) => {
-      if (!response.ok) throw new Error('symbol font unavailable');
-      return response.arrayBuffer();
-    })
-    .then((buffer) => {
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
-      return btoa(binary);
-    })
-    .then((base64) => {
-      window._symbolFontBase64 = base64;
-      return true;
-    })
-    .catch(() => false);
-  return symbolFontPromise;
-}
-
-function configurePdf(pdf, fontsLoaded) {
-  pdf.setFont('helvetica', 'normal');
-  pdf.baseFontFamily = 'helvetica';
-  if (fontsLoaded && window._symbolFontBase64) {
-    pdf.addFileToVFS('NotoSansSymbols2-Regular.ttf', window._symbolFontBase64);
-    pdf.addFont('NotoSansSymbols2-Regular.ttf', 'Symbols', 'normal');
-    pdf.symbolFontFamily = 'Symbols';
+  MESSAGE.textContent = 'Preparando la vista para guardar como PDF...';
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    MESSAGE.className = 'message error';
+    MESSAGE.textContent = 'El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes para esta página.';
+    GENERATE_BUTTON.disabled = false;
+    return;
   }
-  pdf.setProperties({ title: document.querySelector('#booklet-title').value.trim() || 'Alas de papel', author: 'Alas de papel' });
-}
 
-function renderPdf(pdf, reviews) {
-  const includeCover = document.querySelector('#include-cover').checked;
-  const showEmpty = document.querySelector('#show-empty').checked;
-  if (includeCover) renderCover(pdf, reviews.length);
-  reviews.forEach((review, index) => {
-    pdf.addPage();
-    renderReview(pdf, review, index + 1, reviews.length, showEmpty);
-  });
-  for (let page = includeCover ? 2 : 1; page <= pdf.getNumberOfPages(); page += 1) {
-    pdf.setPage(page);
-    pdf.setFontSize(9);
-    pdf.setFont(pdf.getFont().fontName, 'italic');
-    pdf.text(String(page), 105, 288, { align: 'center' });
-  }
-}
-
-function renderCover(pdf, count) {
-  const title = document.querySelector('#cover-title').value.trim() || document.querySelector('#booklet-title').value.trim() || 'Alas de papel';
+  const bookletTitle = document.querySelector('#booklet-title').value.trim() || 'Alas de papel';
+  const coverTitle = document.querySelector('#cover-title').value.trim() || bookletTitle;
   const subtitle = document.querySelector('#cover-subtitle').value.trim();
-  pdf.setFontSize(22); pdf.setFont(pdf.getFont().fontName, 'bold'); pdf.text(title, 105, 58, { align: 'center', maxWidth: 175 });
-  if (subtitle) { pdf.setFontSize(11); pdf.setFont(pdf.getFont().fontName, 'italic'); pdf.text(subtitle, 105, 75, { align: 'center', maxWidth: 175 }); }
-  pdf.setFontSize(13); pdf.setFont(pdf.getFont().fontName, 'normal'); pdf.text(`Total de revisiones: ${count}`, 105, 89, { align: 'center' });
+  const showEmpty = document.querySelector('#show-empty').checked;
+  printWindow.document.write(buildPrintDocument(bookletTitle, coverTitle, subtitle, parsedReviews, showEmpty));
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.onload = () => printWindow.print();
+  MESSAGE.textContent = 'Vista de impresión abierta. Elige «Guardar como PDF» en el destino de impresión.';
+  GENERATE_BUTTON.disabled = false;
 }
 
-function renderReview(pdf, review, index, total, showEmpty) {
-  const left = 16; const width = 178; const bottom = 282;
-  let y = 16;
-  const font = pdf.getFont().fontName;
-  pdf.setFont(font, 'italic'); pdf.setFontSize(9); pdf.text(document.querySelector('#booklet-title').value.trim() || 'Alas de papel', 194, 10, { align: 'right' });
-  pdf.setFont(font, 'bold'); pdf.setFontSize(16); y = write(pdf, review.bookTitle || 'Libro sin título', left, y, width, 9, 16, 'bold');
-  y += 1; pdf.setFont(font, 'normal'); pdf.setFontSize(11);
-  const meta = [];
-  if (review.reviewerName) meta.push(`Revisado por: ${review.reviewerName}`);
-  meta.push(`Revisión ${index} de ${total}`);
-  y = write(pdf, meta.join('                                      '), left, y, width, 7, 11, 'normal');
-  y = write(pdf, `Fecha de revisión: ${review.timestamp}`, left, y, width, 7, 11, 'normal');
-  y = write(pdf, `Puntuación media: ${review.averageScore === null ? '-' : review.averageScore.toFixed(1)}`, left, y, width, 7, 11, 'normal');
-  y += 4;
-  review.criteria.forEach((criterion) => {
-    if (!showEmpty && !criterion.comment) return;
-    const score = formatScore(criterion.score);
-    if (y + 14 > bottom) { pdf.addPage(); addContinuationHeader(pdf); y = 18; }
-    pdf.setFont(font, 'bold'); pdf.setFontSize(12);
-    const titleLines = pdf.splitTextToSize(criterion.name, 140);
-    pdf.text(titleLines, left, y);
-    pdf.setFont(font, 'normal'); pdf.setFontSize(11); drawTextWithSymbols(pdf, score, 194, y, 'normal', 'right');
-    y += Math.max(7, titleLines.length * 7);
-    const text = criterion.comment || 'Sin comentario.';
-    y = write(pdf, text, left, y, width, 6, 11, criterion.comment ? 'normal' : 'italic');
-    y += 2;
-  });
+function buildPrintDocument(bookletTitle, coverTitle, subtitle, reviews, showEmpty) {
+  const cover = document.querySelector('#include-cover').checked
+    ? `<section class="cover"><h1>${escapeHtml(coverTitle)}</h1><p>${escapeHtml(subtitle)}</p><small>Total de revisiones: ${reviews.length}</small></section>`
+    : '';
+  const reviewMarkup = reviews.map((review, index) => buildReviewMarkup(review, index + 1, reviews.length, showEmpty, bookletTitle)).join('');
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${escapeHtml(bookletTitle)}</title><style>${printStyles()}</style></head><body>${cover}${reviewMarkup}</body></html>`;
 }
 
-function addContinuationHeader(pdf) {
-  pdf.setFont(pdf.getFont().fontName, 'italic'); pdf.setFontSize(9);
-  pdf.text(document.querySelector('#booklet-title').value.trim() || 'Alas de papel', 194, 10, { align: 'right' });
+function buildReviewMarkup(review, index, total, showEmpty, bookletTitle) {
+  const criteria = review.criteria.filter((criterion) => showEmpty || criterion.comment).map((criterion) => `
+    <article class="criterion">
+      <div class="criterion-heading"><strong>${escapeHtml(criterion.name)}</strong><span class="score">${renderStars(criterion.score)} <b>${escapeHtml(criterion.score || '-')}</b></span></div>
+      <p class="comment">${escapeHtml(criterion.comment || 'Sin comentario.').replace(/\r?\n/g, '<br>')}</p>
+    </article>`).join('');
+  return `<section class="review"><header><span>${escapeHtml(bookletTitle)}</span><span>${index} / ${total}</span></header><h2>${escapeHtml(review.bookTitle || 'Libro sin título')}</h2><p class="meta">Revisado por: ${escapeHtml(review.reviewerName || 'Desconocido')} · ${escapeHtml(review.timestamp)} · Media: ${review.averageScore === null ? '-' : review.averageScore.toFixed(1)}</p>${criteria}</section>`;
 }
 
-function write(pdf, text, x, y, width, lineHeight, size, style) {
-  pdf.setFontSize(size); pdf.setFont(pdf.getFont().fontName, style);
-  const lines = pdf.splitTextToSize(safeText(text), width);
-  lines.forEach((line, index) => drawTextWithSymbols(pdf, line, x, y + (index * lineHeight), style));
-  return y + lines.length * lineHeight;
+function renderStars(value) {
+  const numeric = Number.parseFloat(String(value).replace(',', '.'));
+  if (Number.isNaN(numeric)) return '<span class="stars">☆☆☆☆☆</span>';
+  const full = Math.floor(Math.max(0, Math.min(10, Math.round(numeric))) / 2);
+  return `<span class="stars" aria-label="${numeric} de 10">${'★'.repeat(full)}${'☆'.repeat(5 - full)}</span>`;
 }
 
-function drawTextWithSymbols(pdf, text, x, y, style, align = 'left') {
-  const symbolPattern = /([\u{1F000}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27FF}\uFE0E\uFE0F])/u;
-  const segments = symbolPattern.test(text) ? text.split(symbolPattern).filter(Boolean) : [text];
-  let totalWidth = 0;
-  segments.forEach((segment) => {
-    const isSymbol = symbolPattern.test(segment) && Boolean(pdf.symbolFontFamily);
-    pdf.setFont(isSymbol ? pdf.symbolFontFamily : pdf.baseFontFamily, isSymbol ? 'normal' : style);
-    totalWidth += pdf.getTextWidth(segment);
-  });
-  let cursor = align === 'right' ? x - totalWidth : x;
-  segments.forEach((segment) => {
-    const isSymbol = symbolPattern.test(segment) && Boolean(pdf.symbolFontFamily);
-    pdf.setFont(isSymbol ? pdf.symbolFontFamily : pdf.baseFontFamily, isSymbol ? 'normal' : style);
-    pdf.text(segment, cursor, y);
-    cursor += pdf.getTextWidth(segment);
-  });
+function escapeHtml(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function printStyles() {
+  return `@page{size:A4;margin:16mm}*{box-sizing:border-box}body{margin:0;color:#24302d;font-family:"Segoe UI","Noto Sans",Arial,sans-serif;font-size:11pt;line-height:1.38}.cover{height:265mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;page-break-after:always}.cover h1{font-family:Georgia,serif;font-size:30pt;margin:0 0 12mm}.cover p{font-style:italic;font-size:13pt}.cover small{margin-top:8mm;font-size:11pt}.review{page-break-before:always}.review header{display:flex;justify-content:space-between;color:#6b7771;font-size:9pt;font-style:italic;border-bottom:1px solid #dfe3da;padding-bottom:3mm;margin-bottom:7mm}.review h2{font-family:Georgia,serif;font-size:18pt;margin:0 0 2mm}.meta{font-size:10pt;color:#52605a;margin:0 0 7mm}.criterion{break-inside:avoid;margin:0 0 4mm}.criterion-heading{display:flex;justify-content:space-between;gap:8mm;align-items:baseline;font-size:11pt}.criterion-heading strong{max-width:75%}.score{white-space:nowrap}.stars{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;letter-spacing:.03em}.score b{font-weight:500}.comment{margin:1mm 0 0;white-space:normal}`;
 }
 
 function formatScore(value) {
@@ -268,5 +187,5 @@ function parseTimestamp(value) {
 }
 function valueAt(row, index) { return clean(row[index]); }
 function clean(value) { return String(value ?? '').replace(/^\uFEFF/, '').trim(); }
-function safeText(value) { return String(value).replace(/[—–]/g, '-').replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[\u00a0\u202f]/g, ' '); }
+function safeText(value) { return String(value).replace(/[—–]/g, '-').replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[\u00a0\u202f]/g, ' ').replace(/[\u{1F000}-\u{1FAFF}]/gu, ''); }
 function safeFilename(value) { return value.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^[_\.]+|[_\.]+$/g, '') || 'reviews_booklet'; }

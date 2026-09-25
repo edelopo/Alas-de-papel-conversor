@@ -33,6 +33,7 @@ h2 { margin-bottom: 0; font: 600 1.45rem/1.1 'Fraunces', Georgia, serif; }
 .drop-zone small { margin-top: 8px; color: #8b958d; font-size: .72rem; }
 .upload-mark { display: grid; width: 43px; height: 43px; place-items: center; margin-bottom: 3px; border-radius: 50%; color: white; background: var(--accent); font-size: 1.45rem; }
 .file-status { min-height: 25px; padding: 11px 2px 0; color: var(--muted); font-size: .82rem; }
+.file-status.loaded { display: flex; align-items: center; min-height: 45px; margin-top: 10px; padding: 10px 13px; border: 1px solid #bfd4bf; border-radius: 4px; color: #356b45; background: #eef7ed; font-weight: 600; }
 .file-status.error, .message.error { color: #a83c27; }
 .options-heading { margin-top: 45px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
