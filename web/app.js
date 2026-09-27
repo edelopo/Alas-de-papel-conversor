@@ -326,6 +326,8 @@ function closePreview() {
 function renderBookletCanvases(reviews, title) {
   const pages = [];
   const books = groupBooks(reviews);
+  const includeStats = document.querySelector('#include-stats').checked;
+  const statsEntry = includeStats ? { title: 'Estadísticas', isStats: true, startPage: null } : null;
   if (INCLUDE_COVER.checked) {
     const canvas = newCanvas();
     const context = canvas.getContext('2d');
@@ -333,7 +335,7 @@ function renderBookletCanvases(reviews, title) {
     drawCover(context, coverTitle, document.querySelector('#cover-subtitle').value.trim(), reviews.length, books.length);
     pages.push(canvas);
   }
-  const contents = document.querySelector('#include-contents').checked ? paginateContents(books) : [];
+  const contents = document.querySelector('#include-contents').checked ? paginateContents(statsEntry ? [...books, statsEntry] : books) : [];
   const contentsStart = pages.length;
   contents.forEach(() => pages.push(null));
   const showEmpty = document.querySelector('#show-empty').checked;
@@ -345,15 +347,16 @@ function renderBookletCanvases(reviews, title) {
     }
     renderReviewCanvases(review, index + 1, reviews.length, title, showEmpty, pages);
   });
-  contents.forEach((entries, index) => {
-    pages[contentsStart + index] = drawContentsPage(entries, title, contentsStart + index + 1, index + 1, contents.length);
-  });
-  if (document.querySelector('#include-stats').checked) {
+  if (includeStats) {
+    statsEntry.startPage = pages.length + 1;
     const stats = reviewStats || calculateStats(reviews);
     appendStatsPages(pages, title, 'Lectores', 'Puntuación media por lector', rankedStats(stats.reviewers, 0));
     appendStatsPages(pages, title, 'Libros', 'Los 10 libros mejor puntuados', rankedStats(stats.books, 0).slice(0, 10));
     appendFavoritePages(pages, title, reviews);
   }
+  contents.forEach((entries, index) => {
+    pages[contentsStart + index] = drawContentsPage(entries, title, contentsStart + index + 1, index + 1, contents.length);
+  });
   return pages;
 }
 
@@ -569,20 +572,20 @@ function drawContentsPage(entries, title, pageNumber, part, totalParts) {
   context.fillText('Contenido', 110, 280);
   context.fillStyle = colors.muted;
   context.font = '18px Arial, sans-serif';
-  context.fillText('LIBROS RESEÑADOS', 180, 356);
+  context.fillText('CONTENIDO', 180, 356);
   context.textAlign = 'right';
   context.fillText('PÁGINA', 1130, 356);
   context.textAlign = 'left';
   entries.forEach(({ book, lines, y, height }) => {
     context.fillStyle = colors.accent;
     context.font = '600 19px Arial, sans-serif';
-    context.fillText(String(book.bookNumber).padStart(2, '0'), 110, y + 33);
+    context.fillText(book.isStats ? '✦' : String(book.bookNumber).padStart(2, '0'), 110, y + 33);
     context.fillStyle = colors.ink;
     context.font = '40px Georgia, serif';
     lines.forEach((line, lineIndex) => context.fillText(line, 180, y + 39 + lineIndex * 48));
     context.fillStyle = colors.muted;
     context.font = '18px Arial, sans-serif';
-    context.fillText(`${book.reviewCount} ${book.reviewCount === 1 ? 'reseña' : 'reseñas'}`, 180, y + 37 + lines.length * 48);
+    context.fillText(book.isStats ? 'Gráficos y favoritos por lector' : `${book.reviewCount} ${book.reviewCount === 1 ? 'reseña' : 'reseñas'}`, 180, y + 37 + lines.length * 48);
     context.fillStyle = colors.accent;
     context.textAlign = 'right';
     context.font = '40px Georgia, serif';
