@@ -1,64 +1,18 @@
-# Booklet reviews MVP
+# Alas de papel conversor
 
-Small Python project for a reading group.
+Web app para convertir las reseñas del club de lectura desde un CSV exportado de Google Forms o Google Sheets a un cuadernillo PDF. Todo el procesamiento de las reseñas ocurre en el navegador; el CSV no se envía a un servidor.
 
-It takes review data exported from Google Forms / Google Sheets as CSV and generates a PDF booklet with all reviews in order.
+## Usar la aplicación
 
-## Two ways to use it
+Abre la [aplicación web](index.html) en un navegador. Sube un CSV con la misma estructura que el [archivo de ejemplo](data/Alas%20de%20papel.csv), ajusta el título y las opciones de portada, y pulsa **Abrir vista para guardar PDF**. En la vista previa, pulsa **Descargar PDF**.
 
-### 1. Simple app for non-technical users
+La generación del PDF usa jsPDF, cargado desde un CDN, por lo que hace falta conexión a Internet para descargarlo. El contenido del CSV se procesa localmente en la pestaña del navegador.
 
-This is the recommended option.
+## Publicar en GitHub Pages
 
-```bash
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# macOS / Linux
-source .venv/bin/activate
+1. Abre **Settings > Pages** en el repositorio.
+2. En **Build and deployment**, selecciona **Deploy from a branch**.
+3. Elige la rama `main` y la carpeta `/ (root)`.
+4. Abre la URL de Pages que muestra GitHub.
 
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-Then:
-- upload the CSV
-- choose the options from the sidebar
-- click **Generar PDF**
-- download the PDF
-
-Streamlit runs a local web app in your browser. Streamlit's basic workflow is to run a Python script with `streamlit run ...`, open a local server, and use widgets such as file uploaders and download buttons to interact with the app. citeturn0search10turn0search2turn0search0
-
-### 2. Script mode
-
-Still available for manual/local use:
-
-```bash
-python -m src.main
-```
-
-This reads:
-- `config.json`
-- `data/Alas de papel.csv`
-
-And writes:
-- `output/reviews_booklet.pdf`
-
-## Notes
-
-- The app expects a CSV exported from Google Forms / Google Sheets with the same structure as the sample file.
-- The PDF keeps the current logic: one entry per response, ordered by book title and timestamp.
-- The app uses Streamlit widgets for text input, toggles, select boxes, file upload and file download. citeturn0search1turn0search3turn0search2turn0search0turn0search6
-
-### 3. GitHub Pages app
-
-The repository also includes a static browser app in `index.html`. It parses the CSV and creates the PDF in the browser, so review data is not uploaded to a server.
-
-To publish it from GitHub:
-
-1. Open **Settings > Pages** in the repository.
-2. Under **Build and deployment**, choose **Deploy from a branch**.
-3. Select the `main` branch and the `/ (root)` folder.
-4. Open the generated Pages URL.
-
-The web app builds the booklet as HTML, renders each PDF page on a browser canvas, validates that every page contains visible pixels, and downloads a PDF directly. Stars and emojis are rasterized by the browser, avoiding PDF font-encoding problems and Firefox's native print preview. The Python/Streamlit app remains available locally.
+La aplicación está formada por `index.html` y los archivos de `web/`. El CSV de `data/` sirve como ejemplo de formato.
