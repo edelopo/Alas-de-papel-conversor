@@ -11,7 +11,7 @@ const CRITERIA = [
   ['FINAL', 21, 22, 'flag'],
 ];
 const REQUIRED_HEADERS = ['Marca temporal', '¿Quién eres?', 'Título del libro'];
-const APP_VERSION = 'v0.9.0';
+const APP_VERSION = 'v1.0.0';
 const BOOKLET_COLORS = {
   paper: '#fbfaf6',
   coverPaper: '#f5f2e9',
@@ -32,7 +32,11 @@ const PREVIEW_DIALOG = document.querySelector('#preview-dialog');
 const PREVIEW_FRAME = document.querySelector('#preview-frame');
 const INCLUDE_COVER = document.querySelector('#include-cover');
 const CUSTOM_COVER_TITLE = document.querySelector('#custom-cover-title');
+const STATS_SECTION = document.querySelector('#stats-section');
+const REVIEWER_CRITERION = document.querySelector('#reviewer-criterion');
+const BOOK_CRITERION = document.querySelector('#book-criterion');
 let parsedReviews = null;
+let reviewStats = null;
 let fileReadSequence = 0;
 let previewUrl = null;
 let busy = false;
@@ -62,6 +66,11 @@ CUSTOM_COVER_TITLE.addEventListener('change', () => {
   updateCoverOptions();
 });
 updateCoverOptions();
+const metricOptions = [['overall', 'Puntuación media'], ...CRITERIA.map(([name], index) => [String(index), name])];
+[REVIEWER_CRITERION, BOOK_CRITERION].forEach((select) => {
+  metricOptions.forEach(([value, label]) => select.add(new Option(label, value)));
+  select.addEventListener('change', renderStats);
+});
 
 function updateCoverOptions() {
   document.querySelectorAll('.cover-option').forEach((element) => { element.hidden = !INCLUDE_COVER.checked; });
@@ -72,6 +81,8 @@ async function handleFile(file) {
   if (!file) return;
   const sequence = ++fileReadSequence;
   parsedReviews = null;
+  reviewStats = null;
+  STATS_SECTION.hidden = true;
   updateButtons();
   MESSAGE.textContent = '';
   MESSAGE.className = 'message';
@@ -86,6 +97,9 @@ async function handleFile(file) {
     if (sequence !== fileReadSequence) return;
     const reviews = parseRows(parseCsv(text));
     parsedReviews = reviews;
+    reviewStats = calculateStats(reviews);
+    renderStats();
+    STATS_SECTION.hidden = false;
     updateButtons();
     const books = new Set(reviews.map((review) => review.bookTitle.toLocaleLowerCase('es'))).size;
     FILE_STATUS.className = 'file-status loaded';
@@ -98,6 +112,8 @@ async function handleFile(file) {
 
 function showFileError(message) {
   parsedReviews = null;
+  reviewStats = null;
+  STATS_SECTION.hidden = true;
   updateButtons();
   FILE_STATUS.className = 'file-status error';
   FILE_STATUS.textContent = message;
@@ -181,6 +197,71 @@ function parseRows(rows) {
   });
   if (!reviews.length) throw new Error('El CSV no contiene reseñas. Exporta las respuestas, no una hoja vacía.');
   return reviews.sort((left, right) => left.bookTitle.localeCompare(right.bookTitle, 'es', { sensitivity: 'base' }) || left.timestampSortKey - right.timestampSortKey);
+}
+
+function calculateStats(reviews) {
+  const makeGroups = (key) => {
+    const groups = new Map();
+    reviews.forEach((review) => {
+      const name = clean(review[key]) || (key === 'reviewerName' ? 'Sin nombre' : 'Sin título');
+      const id = name.toLocaleLowerCase('es');
+      if (!groups.has(id)) groups.set(id, { name, values: Array.from({ length: CRITERIA.length + 1 }, () => []) });
+      const group = groups.get(id);
+      group.values[0].push(review.averageScore);
+      review.criteria.forEach((criterion, index) => {
+        const value = Number(criterion.score.replace(',', '.'));
+        group.values[index + 1].push(criterionHasScore(criterion) && Number.isFinite(value) ? value : null);
+      });
+    });
+    return Array.from(groups.values()).map(({ name, values }) => ({
+      name,
+      metrics: values.map((numbers) => {
+        const scored = numbers.filter((value) => value !== null);
+        return { mean: scored.length ? scored.reduce((sum, value) => sum + value, 0) / scored.length : null, count: scored.length };
+      }),
+    }));
+  };
+  return { reviewers: makeGroups('reviewerName'), books: makeGroups('bookTitle') };
+}
+
+function rankedStats(groups, metricIndex) {
+  return [...groups].sort((left, right) => {
+    const a = left.metrics[metricIndex].mean;
+    const b = right.metrics[metricIndex].mean;
+    return (b === null ? -1 : b) - (a === null ? -1 : a) || left.name.localeCompare(right.name, 'es', { sensitivity: 'base' });
+  });
+}
+
+function renderStats() {
+  if (!reviewStats) return;
+  [[reviewStats.reviewers, REVIEWER_CRITERION, '#reviewer-stats'], [reviewStats.books, BOOK_CRITERION, '#book-stats']].forEach(([groups, select, target]) => {
+    const metricIndex = select.value === 'overall' ? 0 : Number(select.value) + 1;
+    const list = document.querySelector(target);
+    const fragment = document.createDocumentFragment();
+    rankedStats(groups, metricIndex).forEach((group, index) => {
+      const { mean, count } = group.metrics[metricIndex];
+      const row = document.createElement('div');
+      row.className = 'stats-row';
+      const label = document.createElement('div');
+      label.className = 'stats-row-label';
+      const name = document.createElement('span');
+      name.textContent = `${index + 1}. ${group.name}`;
+      const score = document.createElement('strong');
+      score.textContent = mean === null ? '—' : mean.toFixed(1);
+      label.append(name, score);
+      const track = document.createElement('div');
+      track.className = 'stats-track';
+      const bar = document.createElement('div');
+      bar.className = 'stats-bar';
+      bar.style.width = `${mean === null ? 0 : Math.max(0, Math.min(100, mean * 10))}%`;
+      track.append(bar);
+      const detail = document.createElement('small');
+      detail.textContent = `${count} ${count === 1 ? 'reseña puntuada' : 'reseñas puntuadas'}`;
+      row.append(label, track, detail);
+      fragment.append(row);
+    });
+    list.replaceChildren(fragment);
+  });
 }
 
 async function generatePdf(preview) {
@@ -267,7 +348,172 @@ function renderBookletCanvases(reviews, title) {
   contents.forEach((entries, index) => {
     pages[contentsStart + index] = drawContentsPage(entries, title, contentsStart + index + 1, index + 1, contents.length);
   });
+  if (document.querySelector('#include-stats').checked) {
+    const stats = reviewStats || calculateStats(reviews);
+    appendStatsPages(pages, title, 'Lectores', 'Puntuación media por lector', rankedStats(stats.reviewers, 0));
+    appendStatsPages(pages, title, 'Libros', 'Los 10 libros mejor puntuados', rankedStats(stats.books, 0).slice(0, 10));
+    appendFavoritePages(pages, title, reviews);
+  }
   return pages;
+}
+
+function appendFavoritePages(pages, title, reviews) {
+  const readers = new Map();
+  reviews.forEach((review) => {
+    const name = clean(review.reviewerName) || 'Sin nombre';
+    const id = name.toLocaleLowerCase('es');
+    if (!readers.has(id)) readers.set(id, { name, reviews: [] });
+    readers.get(id).reviews.push(review);
+  });
+  const orderedReaders = Array.from(readers.values()).sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+  orderedReaders.forEach((reader) => reader.reviews.sort((a, b) => {
+    if (a.averageScore === null) return b.averageScore === null ? a.bookTitle.localeCompare(b.bookTitle, 'es') : 1;
+    if (b.averageScore === null) return -1;
+    return b.averageScore - a.averageScore || a.bookTitle.localeCompare(b.bookTitle, 'es', { sensitivity: 'base' }) || a.timestampSortKey - b.timestampSortKey;
+  }));
+
+  let context;
+  let y;
+  const startPage = () => {
+    const canvas = newCanvas();
+    context = canvas.getContext('2d');
+    const colors = BOOKLET_COLORS;
+    const pageNumber = pages.length + 1;
+    context.fillStyle = colors.accent;
+    context.fillRect(0, 0, 1240, 14);
+    context.fillStyle = colors.muted;
+    context.font = '600 16px Arial, sans-serif';
+    context.fillText(title.toLocaleUpperCase('es'), 110, 76, 800);
+    context.textAlign = 'right';
+    context.fillText('ESTADÍSTICAS', 1130, 76);
+    context.textAlign = 'left';
+    context.strokeStyle = colors.rule;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(110, 101);
+    context.lineTo(1130, 101);
+    context.moveTo(110, 1660);
+    context.lineTo(1130, 1660);
+    context.stroke();
+    context.fillStyle = colors.accent;
+    context.font = '600 18px Arial, sans-serif';
+    context.fillText('FAVORITOS DE CADA LECTOR', 110, 174);
+    context.fillStyle = colors.ink;
+    context.font = '67px Georgia, serif';
+    context.fillText('Los libros de cada lector', 110, 270, 1020);
+    context.fillStyle = colors.muted;
+    context.font = '19px Arial, sans-serif';
+    context.fillText('Todas sus reseñas, de mayor a menor puntuación media', 110, 321);
+    context.font = '15px Arial, sans-serif';
+    context.fillText('CLUB DE LECTURA', 110, 1697);
+    context.textAlign = 'right';
+    context.fillText(String(pageNumber).padStart(2, '0'), 1130, 1697);
+    context.textAlign = 'left';
+    pages.push(canvas);
+    y = 370;
+  };
+  startPage();
+  orderedReaders.forEach((reader) => {
+    let firstOnPage = true;
+    reader.reviews.forEach((review, index) => {
+      if (y + (firstOnPage ? 102 : 58) > 1580) { startPage(); firstOnPage = true; }
+      if (firstOnPage) {
+        context.fillStyle = BOOKLET_COLORS.sage;
+        context.fillRect(110, y - 30, 1020, 54);
+        context.fillStyle = BOOKLET_COLORS.ink;
+        context.font = '600 28px Georgia, serif';
+        context.fillText(reader.name, 126, y + 6, 740);
+        context.fillStyle = BOOKLET_COLORS.muted;
+        context.font = '17px Arial, sans-serif';
+        context.textAlign = 'right';
+        context.fillText(index ? 'continúa' : `${reader.reviews.length} ${reader.reviews.length === 1 ? 'reseña' : 'reseñas'}`, 1114, y + 4);
+        context.textAlign = 'left';
+        y += 62;
+        firstOnPage = false;
+      }
+      context.fillStyle = BOOKLET_COLORS.accent;
+      context.font = '600 18px Arial, sans-serif';
+      context.fillText(String(index + 1).padStart(2, '0'), 122, y);
+      context.fillStyle = BOOKLET_COLORS.ink;
+      context.font = '25px Georgia, serif';
+      context.fillText(review.bookTitle, 177, y, 800);
+      context.textAlign = 'right';
+      context.font = '600 24px Arial, sans-serif';
+      context.fillText(review.averageScore === null ? '—' : `${review.averageScore.toFixed(1)} / 10`, 1114, y);
+      context.textAlign = 'left';
+      context.strokeStyle = BOOKLET_COLORS.rule;
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(110, y + 16);
+      context.lineTo(1130, y + 16);
+      context.stroke();
+      y += 58;
+    });
+    y += 28;
+  });
+}
+
+function appendStatsPages(pages, title, category, heading, groups) {
+  const rowsPerPage = 13;
+  for (let offset = 0; offset < groups.length; offset += rowsPerPage) {
+    const canvas = newCanvas();
+    const context = canvas.getContext('2d');
+    const colors = BOOKLET_COLORS;
+    const pageNumber = pages.length + 1;
+    context.fillStyle = colors.accent;
+    context.fillRect(0, 0, 1240, 14);
+    context.fillStyle = colors.muted;
+    context.font = '600 16px Arial, sans-serif';
+    context.fillText(title.toLocaleUpperCase('es'), 110, 76, 800);
+    context.textAlign = 'right';
+    context.fillText('ESTADÍSTICAS', 1130, 76);
+    context.textAlign = 'left';
+    context.strokeStyle = colors.rule;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(110, 101);
+    context.lineTo(1130, 101);
+    context.moveTo(110, 1660);
+    context.lineTo(1130, 1660);
+    context.stroke();
+    context.fillStyle = colors.accent;
+    context.font = '600 18px Arial, sans-serif';
+    context.fillText(category.toLocaleUpperCase('es'), 110, 174);
+    context.fillStyle = colors.ink;
+    context.font = '64px Georgia, serif';
+    context.fillText(heading, 110, 270, 1020);
+    context.fillStyle = colors.muted;
+    context.font = '19px Arial, sans-serif';
+    context.fillText('Media sobre 10 · cada reseña puntuada cuenta una vez', 110, 321);
+    groups.slice(offset, offset + rowsPerPage).forEach((group, index) => {
+      const { mean, count } = group.metrics[0];
+      const y = 394 + index * 91;
+      context.fillStyle = colors.ink;
+      context.font = '27px Georgia, serif';
+      context.fillText(`${offset + index + 1}. ${group.name}`, 110, y, 730);
+      context.fillStyle = colors.muted;
+      context.textAlign = 'right';
+      context.font = '17px Arial, sans-serif';
+      context.fillText(`${count} ${count === 1 ? 'reseña' : 'reseñas'}`, 990, y);
+      context.textAlign = 'left';
+      context.fillStyle = colors.rule;
+      context.fillRect(110, y + 17, 880, 23);
+      context.fillStyle = colors.accent;
+      context.fillRect(110, y + 17, mean === null ? 0 : 880 * Math.max(0, Math.min(1, mean / 10)), 23);
+      context.fillStyle = colors.ink;
+      context.textAlign = 'right';
+      context.font = '600 30px Arial, sans-serif';
+      context.fillText(mean === null ? '—' : mean.toFixed(1), 1130, y + 39);
+      context.textAlign = 'left';
+    });
+    context.fillStyle = colors.muted;
+    context.font = '15px Arial, sans-serif';
+    context.fillText('CLUB DE LECTURA', 110, 1697);
+    context.textAlign = 'right';
+    context.fillText(String(pageNumber).padStart(2, '0'), 1130, 1697);
+    context.textAlign = 'left';
+    pages.push(canvas);
+  }
 }
 
 function groupBooks(reviews) {

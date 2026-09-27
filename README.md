@@ -13,9 +13,13 @@ Aplicación web para que los miembros del club de lectura conviertan las respues
 
 La página indica cuántas reseñas y libros ha encontrado y muestra errores concretos cuando el archivo no tiene la estructura esperada. Acepta CSV separados por comas o punto y coma.
 
+Al subir el CSV aparece una sección de **Estadísticas del club** debajo de las opciones. Muestra una clasificación de todos los lectores y todos los libros por puntuación media. En cada lista puedes elegir un criterio concreto para comparar sus medias en esa categoría. El número de reseñas puntuadas se muestra junto a cada resultado; las puntuaciones vacías no se incluyen en la media.
+
 ## Resultado
 
 El cuadernillo ordena las reseñas por título del libro y después por fecha. Puede incluir una portada y un índice con la primera página de cada libro. Cada reseña empieza en una página nueva y, si es larga, continúa en páginas adicionales. El nombre de quien escribió la reseña siempre se muestra; la fecha, la puntuación media y las puntuaciones de cada criterio son opcionales. Los criterios usan iconos y comentarios justificados.
+
+Por defecto, al final del cuadernillo se añaden gráficos de barras horizontales con la puntuación media de cada lector y los diez libros mejor puntuados. Después aparece una lista por lector con todas sus reseñas ordenadas de mayor a menor puntuación media, para ver cuáles son sus libros favoritos. Estas estadísticas se pueden omitir desde **Personaliza el cuadernillo**. Con el CSV de ejemplo ocupan tres páginas; si hay muchos lectores o reseñas, las listas continúan en páginas adicionales. La media de un lector o libro es la media de las puntuaciones medias de sus reseñas, de modo que cada reseña puntuada pesa lo mismo.
 
 Las páginas del PDF se generan como imágenes. Por ahora, el texto del PDF no se puede seleccionar ni buscar.
 

@@ -71,9 +71,30 @@
           <label class="switch-row"><input id="show-average-score" type="checkbox" checked><span>Mostrar puntuación media</span></label>
           <label class="switch-row"><input id="show-criterion-scores" type="checkbox" checked><span>Mostrar estrellas y notas de los criterios</span></label>
           <label class="switch-row"><input id="show-empty" type="checkbox" checked><span>Mostrar apartados sin comentario</span></label>
+          <label class="switch-row"><input id="include-stats" type="checkbox" checked><span>Añadir estadísticas al final</span></label>
         </div>
       </div>
     </details>
+
+    <section class="stats-section" id="stats-section" aria-labelledby="stats-title" hidden>
+      <div class="stats-heading">
+        <div>
+          <p class="eyebrow">Las reseñas en números</p>
+          <h2 id="stats-title">Estadísticas del club</h2>
+          <p>Medias sobre 10. Las respuestas sin puntuación no cuentan para la media.</p>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stats-card">
+          <div class="stats-card-heading"><h3>Por lector</h3><label>Mostrar <select id="reviewer-criterion"></select></label></div>
+          <div id="reviewer-stats" class="stats-list"></div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-heading"><h3>Por libro</h3><label>Mostrar <select id="book-criterion"></select></label></div>
+          <div id="book-stats" class="stats-list"></div>
+        </div>
+      </div>
+    </section>
 
     <p class="privacy-note"><span aria-hidden="true">●</span> Tus reseñas no se suben a ningún servidor. El PDF se crea en esta pestaña.</p>
     <footer>Alas de papel <span>·</span> conversor de reseñas <span>·</span> <strong id="footer-version"></strong></footer>
