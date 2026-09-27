@@ -11,7 +11,7 @@ const CRITERIA = [
   ['FINAL', 21, 22, 'flag'],
 ];
 const REQUIRED_HEADERS = ['Marca temporal', '¿Quién eres?', 'Título del libro'];
-const APP_VERSION = 'v1.1.0';
+const APP_VERSION = 'v1.1.2';
 const GOOGLE_SHEET = {
   id: '1MKOfVs0Xaj06G_ym0AUrz2tik3kiH9O8piqMP3bFlDM',
   clientId: '132459448822-ij6plm098g2l2keqrrebr7okqpsg02kd.apps.googleusercontent.com',
@@ -224,24 +224,45 @@ async function fetchGoogleRows(accessToken) {
   const getJson = async (url) => {
     const response = await fetch(url, { headers });
     if (!response.ok) {
-      if (response.status === 403) throw new Error('Esta cuenta no tiene acceso a la hoja o la API de Google Sheets no está habilitada.');
-      if (response.status === 404) throw new Error('No se encontró la hoja de respuestas. Comprueba el ID del documento.');
-      throw new Error(`Google Sheets devolvió un error (${response.status}).`);
+      const googleError = await response.json().catch(() => null);
+      const detail = String(googleError?.error?.message || '').slice(0, 300);
+      if (response.status === 403) {
+        if (/has not been used|is disabled|service disabled|SERVICE_DISABLED/i.test(detail)) {
+          throw new Error('La API de Google Sheets no está habilitada en el proyecto de Google Cloud de esta web. Actívala y vuelve a intentarlo.');
+        }
+        throw new Error(`Google ha denegado el acceso a la hoja con esta cuenta. Comprueba que puede abrir el documento.${detail ? ` Detalle de Google: ${detail}` : ''}`);
+      }
+      if (response.status === 404) throw new Error('No se encontró la hoja de respuestas. Comprueba el ID del documento y que esta cuenta pueda abrirlo.');
+      throw new Error(`Google Sheets devolvió un error (${response.status}).${detail ? ` ${detail}` : ''}`);
     }
     return response.json();
   };
   const metadata = await getJson(`${base}?fields=sheets(properties(title))`);
   const tabs = (metadata.sheets || []).map((sheet) => sheet.properties?.title).filter(Boolean);
   const rangeUrl = (range) => `${base}/values/${encodeURIComponent(range)}?valueRenderOption=FORMATTED_VALUE`;
+  let headerMismatch = null;
   for (const tab of tabs) {
     const quotedTab = `'${tab.replaceAll("'", "''")}'`;
     const headerData = await getJson(rangeUrl(`${quotedTab}!A1:W1`));
     const header = headerData.values?.[0] || [];
-    if (!REQUIRED_HEADERS.every((name, index) => clean(header[index]) === name)) continue;
-    if (!CRITERIA.every(([name, index]) => clean(header[index]) === name)) continue;
+    if (clean(header[0]) !== REQUIRED_HEADERS[0]) continue;
+    const standardOrder = clean(header[1]) === REQUIRED_HEADERS[1] && clean(header[2]) === REQUIRED_HEADERS[2];
+    const sheetOrder = clean(header[1]) === REQUIRED_HEADERS[2] && clean(header[2]) === REQUIRED_HEADERS[1];
+    if (!standardOrder && !sheetOrder) continue;
+    const mismatchedCriterion = CRITERIA.find(([name, index]) => clean(header[index]) !== name);
+    if (mismatchedCriterion) {
+      const [expected, index] = mismatchedCriterion;
+      headerMismatch = `La pestaña «${tab}» tiene «${clean(header[index]) || '(vacía)'}» en la columna ${index + 1}; se esperaba «${expected}».`;
+      continue;
+    }
     const data = await getJson(rangeUrl(`${quotedTab}!A:W`));
-    return (data.values || []).map((row) => Array.from({ length: Math.max(23, row.length) }, (_, index) => row[index] ?? ''));
+    return (data.values || []).map((row) => {
+      const normalized = Array.from({ length: Math.max(23, row.length) }, (_, index) => row[index] ?? '');
+      if (sheetOrder) [normalized[1], normalized[2]] = [normalized[2], normalized[1]];
+      return normalized;
+    });
   }
+  if (headerMismatch) throw new Error(headerMismatch);
   throw new Error('No se encontró una pestaña con las columnas del formulario del club.');
 }
 
@@ -1033,12 +1054,15 @@ function average(criteria) {
 }
 function criterionHasScore(criterion) { return criterion.score !== ''; }
 function parseTimestamp(value) {
-  const match = value.match(/^(\d{4})[/-](\d{2})[/-](\d{2})\s+(\d{1,2}):(\d{2}):(\d{2})(?:\s+([ap])\.\s*m\.)?/i);
+  const iso = value.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})(?:\s+([ap])\.\s*m\.)?/i);
+  const local = iso ? null : value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})/);
+  const match = iso || local;
   if (!match) return Number.MAX_SAFE_INTEGER;
   let hour = Number(match[4]);
-  if (match[7]?.toLowerCase() === 'p' && hour < 12) hour += 12;
-  if (match[7]?.toLowerCase() === 'a' && hour === 12) hour = 0;
-  return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), hour, Number(match[5]), Number(match[6]));
+  if (iso && match[7]?.toLowerCase() === 'p' && hour < 12) hour += 12;
+  if (iso && match[7]?.toLowerCase() === 'a' && hour === 12) hour = 0;
+  const [year, month, day] = iso ? [Number(match[1]), Number(match[2]), Number(match[3])] : [Number(match[3]), Number(match[2]), Number(match[1])];
+  return Date.UTC(year, month - 1, day, hour, Number(match[5]), Number(match[6]));
 }
 function valueAt(row, index) { return clean(row[index]); }
 function clean(value) { return String(value ?? '').replace(/^\uFEFF/, '').trim(); }
