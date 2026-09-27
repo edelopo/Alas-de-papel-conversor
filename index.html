@@ -31,7 +31,7 @@
           <span>o haz clic para buscarlo en tu ordenador</span>
           <small>Usa el CSV exportado desde Google Forms o Google Sheets</small>
         </label>
-        <div id="file-status" class="file-status" aria-live="polite"></div>
+        <div id="file-status" class="file-status" role="status" aria-live="polite"></div>
 
         <div class="step-heading options-heading">
           <span class="step-number">02</span>
@@ -39,12 +39,16 @@
         </div>
         <div class="form-grid">
           <label>Título del cuadernillo<input id="booklet-title" value="Alas de papel"></label>
-          <label>Título de portada<input id="cover-title" value="Alas de papel"></label>
-          <label class="wide">Subtítulo<input id="cover-subtitle" value="Nuestro grupo de lectura"></label>
           <label class="switch-row"><input id="include-cover" type="checkbox" checked><span>Incluir portada</span></label>
+          <label class="wide cover-option">Subtítulo de portada<input id="cover-subtitle" value="Nuestro grupo de lectura"></label>
+          <label class="switch-row cover-option wide"><input id="custom-cover-title" type="checkbox"><span>Usar otro título en la portada</span></label>
+          <label class="wide cover-option" id="cover-title-row" hidden>Título de portada<input id="cover-title" value="Alas de papel"></label>
           <label class="switch-row"><input id="show-empty" type="checkbox" checked><span>Mostrar apartados sin comentario</span></label>
         </div>
-        <button id="generate-button" class="primary-button" type="button" disabled>Abrir vista para guardar PDF <span aria-hidden="true">→</span></button>
+        <div class="actions">
+          <button id="generate-button" class="primary-button" type="button" disabled>Descargar PDF <span aria-hidden="true">↓</span></button>
+          <button id="preview-button" class="secondary-button" type="button" disabled>Vista previa</button>
+        </div>
         <div id="message" class="message" role="status" aria-live="polite"></div>
       </div>
 
@@ -54,7 +58,7 @@
           <ol>
             <li><span>1</span><div><strong>Sube</strong><small>El CSV de respuestas</small></div></li>
             <li><span>2</span><div><strong>Revisa</strong><small>El título y la portada</small></div></li>
-            <li><span>3</span><div><strong>Descarga</strong><small>El PDF directamente desde la vista previa</small></div></li>
+            <li><span>3</span><div><strong>Descarga</strong><small>El PDF con un clic</small></div></li>
           </ol>
         </div>
         <div class="side-panel muted-panel">
@@ -65,6 +69,10 @@
     </section>
     <footer>Alas de papel <span>·</span> conversor de reseñas <span>·</span> <strong id="footer-version"></strong></footer>
   </main>
+  <dialog id="preview-dialog" aria-labelledby="preview-title">
+    <div class="preview-toolbar"><h2 id="preview-title">Vista previa del PDF</h2><button id="close-preview" type="button">Cerrar</button></div>
+    <iframe id="preview-frame" title="Cuadernillo en PDF"></iframe>
+  </dialog>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="web/app.js"></script>
 </body>
