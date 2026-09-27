@@ -11,7 +11,11 @@ const CRITERIA = [
   ['FINAL', 21, 22, 'flag'],
 ];
 const REQUIRED_HEADERS = ['Marca temporal', '¿Quién eres?', 'Título del libro'];
-const APP_VERSION = 'v1.0.0';
+const APP_VERSION = 'v1.1.0';
+const GOOGLE_SHEET = {
+  id: '1MKOfVs0Xaj06G_ym0AUrz2tik3kiH9O8piqMP3bFlDM',
+  clientId: '132459448822-ij6plm098g2l2keqrrebr7okqpsg02kd.apps.googleusercontent.com',
+};
 const BOOKLET_COLORS = {
   paper: '#fbfaf6',
   coverPaper: '#f5f2e9',
@@ -25,6 +29,8 @@ const BOOKLET_COLORS = {
 const DROP_ZONE = document.querySelector('#drop-zone');
 const FILE_INPUT = document.querySelector('#csv-input');
 const FILE_STATUS = document.querySelector('#file-status');
+const GOOGLE_IMPORT = document.querySelector('#google-import');
+const GOOGLE_BUTTON = document.querySelector('#google-button');
 const GENERATE_BUTTON = document.querySelector('#generate-button');
 const PREVIEW_BUTTON = document.querySelector('#preview-button');
 const MESSAGE = document.querySelector('#message');
@@ -38,6 +44,8 @@ const BOOK_CRITERION = document.querySelector('#book-criterion');
 let parsedReviews = null;
 let reviewStats = null;
 let fileReadSequence = 0;
+let googleTokenClient = null;
+let loadingGoogle = false;
 let previewUrl = null;
 let busy = false;
 let criterionIcons = null;
@@ -45,6 +53,7 @@ let iconLoadPromise = null;
 
 document.querySelector('#footer-version').textContent = APP_VERSION;
 FILE_INPUT.addEventListener('change', (event) => handleFile(event.target.files[0]));
+GOOGLE_BUTTON.addEventListener('click', loadGoogleReviews);
 ['dragenter', 'dragover'].forEach((eventName) => DROP_ZONE.addEventListener(eventName, (event) => {
   event.preventDefault();
   DROP_ZONE.classList.add('is-dragging');
@@ -66,6 +75,7 @@ CUSTOM_COVER_TITLE.addEventListener('change', () => {
   updateCoverOptions();
 });
 updateCoverOptions();
+if (GOOGLE_SHEET.id && GOOGLE_SHEET.clientId) initializeGoogleImport();
 const metricOptions = [['overall', 'Puntuación media'], ...CRITERIA.map(([name], index) => [String(index), name])];
 [REVIEWER_CRITERION, BOOK_CRITERION].forEach((select) => {
   metricOptions.forEach(([value, label]) => select.add(new Option(label, value)));
@@ -80,6 +90,7 @@ function updateCoverOptions() {
 async function handleFile(file) {
   if (!file) return;
   const sequence = ++fileReadSequence;
+  loadingGoogle = false;
   parsedReviews = null;
   reviewStats = null;
   STATS_SECTION.hidden = true;
@@ -96,14 +107,7 @@ async function handleFile(file) {
     const text = await file.text();
     if (sequence !== fileReadSequence) return;
     const reviews = parseRows(parseCsv(text));
-    parsedReviews = reviews;
-    reviewStats = calculateStats(reviews);
-    renderStats();
-    STATS_SECTION.hidden = false;
-    updateButtons();
-    const books = new Set(reviews.map((review) => review.bookTitle.toLocaleLowerCase('es'))).size;
-    FILE_STATUS.className = 'file-status loaded';
-    FILE_STATUS.textContent = `✓ ${file.name} · ${reviews.length} ${reviews.length === 1 ? 'reseña' : 'reseñas'} de ${books} ${books === 1 ? 'libro' : 'libros'}. Listo para descargar.`;
+    acceptReviews(reviews, file.name);
   } catch (error) {
     if (sequence !== fileReadSequence) return;
     showFileError(error.message || 'No se ha podido leer el archivo CSV.');
@@ -122,6 +126,123 @@ function showFileError(message) {
 function updateButtons() {
   GENERATE_BUTTON.disabled = busy || !parsedReviews;
   PREVIEW_BUTTON.disabled = busy || !parsedReviews;
+  GOOGLE_BUTTON.disabled = busy || loadingGoogle || !googleTokenClient;
+}
+
+function acceptReviews(reviews, source) {
+  parsedReviews = reviews;
+  reviewStats = calculateStats(reviews);
+  renderStats();
+  STATS_SECTION.hidden = false;
+  updateButtons();
+  const books = new Set(reviews.map((review) => review.bookTitle.toLocaleLowerCase('es'))).size;
+  FILE_STATUS.className = 'file-status loaded';
+  FILE_STATUS.textContent = `✓ ${source} · ${reviews.length} ${reviews.length === 1 ? 'reseña' : 'reseñas'} de ${books} ${books === 1 ? 'libro' : 'libros'}. Listo para descargar.`;
+}
+
+function initializeGoogleImport() {
+  GOOGLE_IMPORT.hidden = false;
+  document.querySelector('#upload-title').textContent = 'Carga las reseñas';
+  document.querySelector('.converter-heading p').textContent = 'Desde Google Sheets o un archivo CSV.';
+  document.querySelector('.intro > p:last-child').textContent = 'Carga las respuestas del formulario y descarga un cuadernillo PDF para todo el grupo.';
+  const steps = document.querySelectorAll('.quick-guide li');
+  steps[0].querySelector('strong').textContent = 'Carga';
+  steps[0].querySelector('small').textContent = 'Desde Google o un CSV';
+  steps[1].querySelector('strong').textContent = 'Revisa';
+  steps[1].querySelector('small').textContent = 'Opciones y estadísticas';
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.async = true;
+  script.onload = () => {
+    googleTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_SHEET.clientId,
+      scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+      callback: () => {},
+      error_callback: (error) => {
+        if (!loadingGoogle) return;
+        showFileError(error.type === 'popup_closed' ? 'Has cerrado el acceso a Google. Puedes intentarlo de nuevo.' : 'No se pudo abrir el acceso a Google. Comprueba que el navegador permita ventanas emergentes.');
+        loadingGoogle = false;
+        updateButtons();
+      },
+    });
+    updateButtons();
+  };
+  script.onerror = () => {
+    GOOGLE_BUTTON.textContent = 'Google no disponible';
+    FILE_STATUS.className = 'file-status error';
+    FILE_STATUS.textContent = 'No se pudo cargar el acceso a Google. Comprueba la conexión e inténtalo de nuevo más tarde.';
+  };
+  document.head.append(script);
+}
+
+function loadGoogleReviews() {
+  if (!googleTokenClient || loadingGoogle || busy) return;
+  const sequence = ++fileReadSequence;
+  loadingGoogle = true;
+  parsedReviews = null;
+  reviewStats = null;
+  STATS_SECTION.hidden = true;
+  FILE_STATUS.className = 'file-status';
+  FILE_STATUS.textContent = 'Esperando autorización de Google…';
+  MESSAGE.textContent = '';
+  updateButtons();
+  googleTokenClient.callback = async (response) => {
+    if (sequence !== fileReadSequence) return;
+    if (response.error || !response.access_token) {
+      showFileError('No se autorizó el acceso a Google Sheets. Puedes intentarlo de nuevo o subir un CSV.');
+      loadingGoogle = false;
+      updateButtons();
+      return;
+    }
+    try {
+      FILE_STATUS.textContent = 'Cargando las respuestas de Google…';
+      const rows = await fetchGoogleRows(response.access_token);
+      const reviews = parseRows(rows);
+      if (sequence !== fileReadSequence) return;
+      acceptReviews(reviews, 'Google Sheets');
+    } catch (error) {
+      if (sequence === fileReadSequence) showFileError(error.message || 'No se pudieron cargar las respuestas de Google.');
+    } finally {
+      if (sequence === fileReadSequence) {
+        loadingGoogle = false;
+        updateButtons();
+      }
+    }
+  };
+  try {
+    googleTokenClient.requestAccessToken();
+  } catch (error) {
+    showFileError('No se pudo abrir el acceso a Google. Comprueba que el navegador permita ventanas emergentes.');
+    loadingGoogle = false;
+    updateButtons();
+  }
+}
+
+async function fetchGoogleRows(accessToken) {
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(GOOGLE_SHEET.id)}`;
+  const headers = { Authorization: `Bearer ${accessToken}` };
+  const getJson = async (url) => {
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      if (response.status === 403) throw new Error('Esta cuenta no tiene acceso a la hoja o la API de Google Sheets no está habilitada.');
+      if (response.status === 404) throw new Error('No se encontró la hoja de respuestas. Comprueba el ID del documento.');
+      throw new Error(`Google Sheets devolvió un error (${response.status}).`);
+    }
+    return response.json();
+  };
+  const metadata = await getJson(`${base}?fields=sheets(properties(title))`);
+  const tabs = (metadata.sheets || []).map((sheet) => sheet.properties?.title).filter(Boolean);
+  const rangeUrl = (range) => `${base}/values/${encodeURIComponent(range)}?valueRenderOption=FORMATTED_VALUE`;
+  for (const tab of tabs) {
+    const quotedTab = `'${tab.replaceAll("'", "''")}'`;
+    const headerData = await getJson(rangeUrl(`${quotedTab}!A1:W1`));
+    const header = headerData.values?.[0] || [];
+    if (!REQUIRED_HEADERS.every((name, index) => clean(header[index]) === name)) continue;
+    if (!CRITERIA.every(([name, index]) => clean(header[index]) === name)) continue;
+    const data = await getJson(rangeUrl(`${quotedTab}!A:W`));
+    return (data.values || []).map((row) => Array.from({ length: Math.max(23, row.length) }, (_, index) => row[index] ?? ''));
+  }
+  throw new Error('No se encontró una pestaña con las columnas del formulario del club.');
 }
 
 function detectDelimiter(text) {

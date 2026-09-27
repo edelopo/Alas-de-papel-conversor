@@ -32,6 +32,13 @@ h1 { max-width: 760px; margin-bottom: 14px; font: 600 clamp(2.5rem, 6vw, 4.4rem)
 .step-badge { display: grid; flex: 0 0 38px; height: 38px; place-items: center; border-radius: 50%; color: var(--accent); background: #faece5; font-size: .77rem; font-weight: 700; }
 .converter-heading h2 { margin: 0 0 5px; font: 600 1.55rem/1.15 'Fraunces', Georgia, serif; }
 .converter-heading p { margin: 0; color: var(--muted); font-size: .86rem; }
+.google-import { margin-bottom: 21px; }
+.google-button { width: 100%; min-height: 58px; padding: 14px 20px; border: 0; border-radius: 7px; color: white; background: var(--ink); font-weight: 700; font-size: .98rem; }
+.google-button:hover:not(:disabled) { background: #355548; }
+.google-button:disabled { cursor: wait; opacity: .55; }
+.google-import > p { margin: 9px 0 20px; color: var(--muted); font-size: .78rem; text-align: center; }
+.source-divider { display: flex; align-items: center; gap: 13px; color: var(--muted); font-size: .76rem; text-align: center; }
+.source-divider::before, .source-divider::after { content: ''; height: 1px; flex: 1; background: var(--line); }
 .drop-zone { display: flex; min-height: 230px; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 25px; border: 2px dashed #b7cbb8; border-radius: 11px; color: var(--muted); background: #f7faf5; cursor: pointer; text-align: center; transition: border-color .2s, background .2s, box-shadow .2s; }
 .drop-zone:hover, .drop-zone.is-dragging, .drop-zone:focus-within { border-color: var(--accent); background: #fff7f1; box-shadow: 0 0 0 4px rgba(195, 95, 59, .1); }
 .drop-zone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
