@@ -11,7 +11,7 @@ const CRITERIA = [
   ['FINAL', 21, 22, 'flag'],
 ];
 const REQUIRED_HEADERS = ['Marca temporal', '¿Quién eres?', 'Título del libro'];
-const APP_VERSION = 'v0.8.1';
+const APP_VERSION = 'v0.9.0';
 const BOOKLET_COLORS = {
   paper: '#fbfaf6',
   coverPaper: '#f5f2e9',
@@ -39,7 +39,6 @@ let busy = false;
 let criterionIcons = null;
 let iconLoadPromise = null;
 
-document.querySelector('#app-version').textContent = APP_VERSION;
 document.querySelector('#footer-version').textContent = APP_VERSION;
 FILE_INPUT.addEventListener('change', (event) => handleFile(event.target.files[0]));
 ['dragenter', 'dragover'].forEach((eventName) => DROP_ZONE.addEventListener(eventName, (event) => {
@@ -253,7 +252,7 @@ function renderBookletCanvases(reviews, title) {
     drawCover(context, coverTitle, document.querySelector('#cover-subtitle').value.trim(), reviews.length, books.length);
     pages.push(canvas);
   }
-  const contents = paginateContents(books);
+  const contents = document.querySelector('#include-contents').checked ? paginateContents(books) : [];
   const contentsStart = pages.length;
   contents.forEach(() => pages.push(null));
   const showEmpty = document.querySelector('#show-empty').checked;
@@ -437,6 +436,9 @@ function renderReviewCanvases(review, index, total, title, showEmpty, pages) {
   const right = 1130;
   const bottom = 1608;
   const colors = BOOKLET_COLORS;
+  const showDate = document.querySelector('#show-review-date').checked;
+  const showAverage = document.querySelector('#show-average-score').checked;
+  const showCriterionScores = document.querySelector('#show-criterion-scores').checked;
   const startPage = (continuation) => {
     pages.push(canvas);
     canvas = newCanvas();
@@ -484,8 +486,9 @@ function renderReviewCanvases(review, index, total, title, showEmpty, pages) {
   drawPageFrame(context, title, index, total, pages.length + 1);
   drawBlock(review.bookTitle, left, right - left, '46px Georgia, serif', 58, colors.ink);
   y += 12;
-  const reviewerLines = wrapLines(context, review.reviewerName || 'Desconocido', 650, '46px Georgia, serif');
-  const dateLines = wrapLines(context, review.timestamp || 'Sin fecha', 710, '17px Arial, sans-serif');
+  const metaTextWidth = showAverage ? 650 : right - left - 56;
+  const reviewerLines = wrapLines(context, review.reviewerName || 'Desconocido', metaTextWidth, '46px Georgia, serif');
+  const dateLines = showDate ? wrapLines(context, review.timestamp || 'Sin fecha', metaTextWidth, '17px Arial, sans-serif') : [];
   const metaHeight = 82 + (reviewerLines.length * 52) + (dateLines.length * 24);
   ensureSpace(metaHeight + 42);
   context.fillStyle = colors.sage;
@@ -502,20 +505,22 @@ function renderReviewCanvases(review, index, total, title, showEmpty, pages) {
   context.fillStyle = colors.muted;
   context.font = '17px Arial, sans-serif';
   dateLines.forEach((line) => { context.fillText(line, left + 28, metaY + 2); metaY += 24; });
-  context.fillStyle = colors.muted;
-  context.font = '600 15px Arial, sans-serif';
-  context.fillText('PUNTUACIÓN MEDIA', right - 240, y + 31);
-  context.fillStyle = colors.ink;
-  context.font = '52px Georgia, serif';
-  context.fillText(review.averageScore === null ? '—' : review.averageScore.toFixed(1), right - 240, y + 104);
-  context.fillStyle = colors.muted;
-  context.font = '18px Arial, sans-serif';
-  context.fillText('/ 10', right - 115, y + 101);
+  if (showAverage) {
+    context.fillStyle = colors.muted;
+    context.font = '600 15px Arial, sans-serif';
+    context.fillText('PUNTUACIÓN MEDIA', right - 240, y + 31);
+    context.fillStyle = colors.ink;
+    context.font = '52px Georgia, serif';
+    context.fillText(review.averageScore === null ? '—' : review.averageScore.toFixed(1), right - 240, y + 104);
+    context.fillStyle = colors.muted;
+    context.font = '18px Arial, sans-serif';
+    context.fillText('/ 10', right - 115, y + 101);
+  }
   y += metaHeight + 38;
 
   review.criteria.forEach((criterion, criterionIndex) => {
     if (!showEmpty && !criterion.comment) return;
-    const headingLines = wrapLines(context, criterion.name, 720, '600 20px Arial, sans-serif');
+    const headingLines = wrapLines(context, criterion.name, showCriterionScores ? 720 : right - left - 48, '600 20px Arial, sans-serif');
     ensureSpace((headingLines.length * 29) + 78);
     context.strokeStyle = colors.rule;
     context.lineWidth = 2;
@@ -529,7 +534,7 @@ function renderReviewCanvases(review, index, total, title, showEmpty, pages) {
     context.font = '600 20px Arial, sans-serif';
     headingLines.forEach((line, lineIndex) => {
       context.fillText(line, left + 48, y);
-      if (lineIndex === 0) drawCanvasScore(context, criterion.score, right, y);
+      if (lineIndex === 0 && showCriterionScores) drawCanvasScore(context, criterion.score, right, y);
       y += 29;
     });
     y += 9;

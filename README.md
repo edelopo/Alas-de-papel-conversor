@@ -8,14 +8,14 @@ Aplicación web para que los miembros del club de lectura conviertan las respues
 
 1. Abre [index.html](index.html) o la URL del sitio publicado.
 2. Exporta las respuestas de Google Forms o Google Sheets como CSV y súbelo a la página. Puedes consultar el [CSV de ejemplo](data/Alas%20de%20papel.csv) para ver la estructura esperada.
-3. Ajusta el título, la portada y la opción de mostrar apartados sin comentario.
+3. Si quieres cambiar el resultado, abre **Personaliza el cuadernillo**. Puedes ajustar el título y la portada, incluir u omitir el índice, y elegir qué datos y puntuaciones se muestran.
 4. Pulsa **Descargar PDF**. Si prefieres comprobar el resultado antes, pulsa **Vista previa**.
 
 La página indica cuántas reseñas y libros ha encontrado y muestra errores concretos cuando el archivo no tiene la estructura esperada. Acepta CSV separados por comas o punto y coma.
 
 ## Resultado
 
-El cuadernillo ordena las reseñas por título del libro y después por fecha. Incluye una portada opcional, un índice con la primera página de cada libro y una página inicial para cada reseña. Las reseñas largas continúan en páginas adicionales. Cada reseña muestra a quien la escribió, la fecha, la puntuación media y los criterios evaluados con estrellas, iconos y comentarios justificados.
+El cuadernillo ordena las reseñas por título del libro y después por fecha. Puede incluir una portada y un índice con la primera página de cada libro. Cada reseña empieza en una página nueva y, si es larga, continúa en páginas adicionales. El nombre de quien escribió la reseña siempre se muestra; la fecha, la puntuación media y las puntuaciones de cada criterio son opcionales. Los criterios usan iconos y comentarios justificados.
 
 Las páginas del PDF se generan como imágenes. Por ahora, el texto del PDF no se puede seleccionar ni buscar.
 

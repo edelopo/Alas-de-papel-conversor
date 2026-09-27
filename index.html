@@ -3,70 +3,79 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Convierte las respuestas del club de lectura en un PDF listo para compartir.">
+  <meta name="description" content="Convierte las reseñas del club de lectura en un cuadernillo PDF listo para compartir.">
   <title>Alas de papel | Conversor de reseñas</title>
   <link rel="stylesheet" href="web/styles.css">
 </head>
 <body>
   <main class="shell">
-    <header class="masthead">
-      <div>
-        <p class="eyebrow">Club de lectura</p>
-        <h1>Alas de papel</h1>
-        <p class="lede">Convierte las respuestas de Google Forms en un cuadernillo PDF.</p>
-      </div>
-      <div class="privacy-note"><span aria-hidden="true">●</span> El archivo se procesa en tu navegador <b id="app-version"></b></div>
+    <header class="site-header">
+      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">✳</span> Alas de papel</a>
+      <span class="header-label">Conversor de reseñas</span>
     </header>
 
-    <section class="workspace" aria-labelledby="upload-title">
-      <div class="main-column">
-        <div class="step-heading">
-          <span class="step-number">01</span>
-          <div><p class="eyebrow">Entrada</p><h2 id="upload-title">Añade las reseñas</h2></div>
-        </div>
-        <label class="drop-zone" id="drop-zone" for="csv-input">
-          <input id="csv-input" type="file" accept=".csv,text/csv">
-          <span class="upload-mark" aria-hidden="true">↑</span>
-          <strong>Arrastra el CSV aquí</strong>
-          <span>o haz clic para buscarlo en tu ordenador</span>
-          <small>Usa el CSV exportado desde Google Forms o Google Sheets</small>
-        </label>
-        <div id="file-status" class="file-status" role="status" aria-live="polite"></div>
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">Para el club de lectura</p>
+      <h1 id="page-title">Tus reseñas, listas para compartir.</h1>
+      <p>Sube las respuestas del formulario y descarga un cuadernillo PDF para todo el grupo.</p>
+    </section>
 
-        <div class="step-heading options-heading">
-          <span class="step-number">02</span>
-          <div><p class="eyebrow">Salida</p><h2>Personaliza el cuadernillo</h2></div>
+    <section class="converter" aria-labelledby="upload-title">
+      <div class="converter-heading">
+        <span class="step-badge" aria-hidden="true">01</span>
+        <div>
+          <h2 id="upload-title">Sube el CSV de respuestas</h2>
+          <p>Exporta el archivo desde Google Forms o Google Sheets.</p>
         </div>
-        <div class="form-grid">
-          <label>Título del cuadernillo<input id="booklet-title" value="Alas de papel"></label>
+      </div>
+      <label class="drop-zone" id="drop-zone" for="csv-input">
+        <input id="csv-input" type="file" accept=".csv,text/csv">
+        <span class="upload-mark" aria-hidden="true">↑</span>
+        <strong>Arrastra el CSV aquí</strong>
+        <span>o haz clic para elegirlo en tu ordenador</span>
+        <small>Archivo .csv · Se procesa en tu navegador</small>
+      </label>
+      <div id="file-status" class="file-status" role="status" aria-live="polite"></div>
+
+      <ol class="quick-guide" aria-label="Cómo crear el cuadernillo">
+        <li><span>1</span><div><strong>Exporta</strong><small>Las respuestas como CSV</small></div></li>
+        <li><span>2</span><div><strong>Sube</strong><small>El archivo a esta página</small></div></li>
+        <li><span>3</span><div><strong>Descarga</strong><small>El PDF con un clic</small></div></li>
+      </ol>
+
+      <div class="actions">
+        <button id="generate-button" class="primary-button" type="button" disabled>Descargar PDF <span aria-hidden="true">↓</span></button>
+        <button id="preview-button" class="secondary-button" type="button" disabled>Vista previa</button>
+      </div>
+      <div id="message" class="message" role="status" aria-live="polite"></div>
+    </section>
+
+    <details class="options-panel" id="booklet-options">
+      <summary>
+        <span class="options-heading"><strong>Personaliza el cuadernillo</strong><small>Opcional · La configuración predeterminada está lista para usar</small></span>
+        <span class="summary-chevron" aria-hidden="true">⌄</span>
+      </summary>
+      <div class="options-body">
+        <div class="option-group">
+          <h3>Identidad y portada</h3>
+          <label class="text-field">Título del cuadernillo<input id="booklet-title" value="Alas de papel"></label>
           <label class="switch-row"><input id="include-cover" type="checkbox" checked><span>Incluir portada</span></label>
-          <label class="wide cover-option">Subtítulo de portada<input id="cover-subtitle" value="Nuestro grupo de lectura"></label>
-          <label class="switch-row cover-option wide"><input id="custom-cover-title" type="checkbox"><span>Usar otro título en la portada</span></label>
-          <label class="wide cover-option" id="cover-title-row" hidden>Título de portada<input id="cover-title" value="Alas de papel"></label>
+          <label class="text-field cover-option">Subtítulo de portada<input id="cover-subtitle" value="Nuestro grupo de lectura"></label>
+          <label class="switch-row cover-option"><input id="custom-cover-title" type="checkbox"><span>Usar otro título en la portada</span></label>
+          <label class="text-field cover-option" id="cover-title-row" hidden>Título de portada<input id="cover-title" value="Alas de papel"></label>
+          <label class="switch-row"><input id="include-contents" type="checkbox" checked><span>Incluir índice por libro</span></label>
+        </div>
+        <div class="option-group">
+          <h3>Datos de las reseñas</h3>
+          <label class="switch-row"><input id="show-review-date" type="checkbox" checked><span>Mostrar fecha de cada reseña</span></label>
+          <label class="switch-row"><input id="show-average-score" type="checkbox" checked><span>Mostrar puntuación media</span></label>
+          <label class="switch-row"><input id="show-criterion-scores" type="checkbox" checked><span>Mostrar estrellas y notas de los criterios</span></label>
           <label class="switch-row"><input id="show-empty" type="checkbox" checked><span>Mostrar apartados sin comentario</span></label>
         </div>
-        <div class="actions">
-          <button id="generate-button" class="primary-button" type="button" disabled>Descargar PDF <span aria-hidden="true">↓</span></button>
-          <button id="preview-button" class="secondary-button" type="button" disabled>Vista previa</button>
-        </div>
-        <div id="message" class="message" role="status" aria-live="polite"></div>
       </div>
+    </details>
 
-      <aside class="side-column">
-        <div class="side-panel">
-          <p class="eyebrow">Cómo funciona</p>
-          <ol>
-            <li><span>1</span><div><strong>Sube</strong><small>El CSV de respuestas</small></div></li>
-            <li><span>2</span><div><strong>Revisa</strong><small>El título y la portada</small></div></li>
-            <li><span>3</span><div><strong>Descarga</strong><small>El PDF con un clic</small></div></li>
-          </ol>
-        </div>
-        <div class="side-panel muted-panel">
-          <p class="eyebrow">Privacidad</p>
-          <p>Tus reseñas no se suben a ningún servidor. El PDF se crea dentro de esta pestaña y puedes cerrar la página al terminar.</p>
-        </div>
-      </aside>
-    </section>
+    <p class="privacy-note"><span aria-hidden="true">●</span> Tus reseñas no se suben a ningún servidor. El PDF se crea en esta pestaña.</p>
     <footer>Alas de papel <span>·</span> conversor de reseñas <span>·</span> <strong id="footer-version"></strong></footer>
   </main>
   <dialog id="preview-dialog" aria-labelledby="preview-title">
