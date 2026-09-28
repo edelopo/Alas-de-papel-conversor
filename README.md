@@ -6,14 +6,14 @@ Aplicación web para que los miembros del club de lectura conviertan las respues
 
 ## Cómo usarlo
 
-1. Abre la URL del sitio publicado. Para probarlo en local, sirve [index.html](index.html) desde `http://localhost:8765`; si lo abres como archivo, solo funcionará la carga de CSV.
+1. Abre la URL del sitio publicado. Para probarlo en local, sirve esta carpeta desde un puerto libre, por ejemplo `http://localhost:8766`, y abre [index.html](index.html); si lo abres como archivo, solo funcionará la carga de CSV.
 2. Pulsa **Cargar respuestas de Google** y autoriza el acceso con una cuenta que pueda ver la hoja vinculada al formulario. También puedes exportar las respuestas como CSV y subir el archivo. El [CSV de ejemplo](data/Alas%20de%20papel.csv) muestra la estructura esperada.
 3. Si quieres cambiar el resultado, abre **Personaliza el cuadernillo**. Puedes ajustar el título y la portada, incluir u omitir el índice, y elegir qué datos y puntuaciones se muestran.
 4. Pulsa **Descargar PDF**. Si prefieres comprobar el resultado antes, pulsa **Vista previa**.
 
 La página indica cuántas reseñas y libros ha encontrado y muestra errores concretos cuando el archivo no tiene la estructura esperada. Acepta CSV separados por comas o punto y coma.
 
-También puedes pulsar **Cargar respuestas de Google** para leer la hoja vinculada al formulario sin descargar un CSV. Cada miembro debe iniciar sesión con una cuenta que tenga acceso de lectura a la hoja. La web busca la pestaña con las columnas del formulario, lee las respuestas con permiso `spreadsheets.readonly` y las procesa en el navegador; el CSV sigue disponible como alternativa. En Google Cloud, los orígenes JavaScript autorizados deben incluir `https://edelopo.github.io` y, para probar la web localmente, `http://localhost:8765`. La autenticación no funciona desde `file://`.
+También puedes pulsar **Cargar respuestas de Google** para leer la hoja vinculada al formulario sin descargar un CSV. Cada miembro debe iniciar sesión con una cuenta que tenga acceso de lectura a la hoja. La web busca la pestaña con las columnas del formulario, lee las respuestas con permiso `spreadsheets.readonly` y las procesa en el navegador; el CSV sigue disponible como alternativa. En Google Cloud, los orígenes JavaScript autorizados deben incluir `https://edelopo.github.io` y, si quieres probar la carga desde Google en local, el origen exacto del servidor que uses (por ejemplo `http://localhost:8766`). La autenticación no funciona desde `file://`.
 
 Al cargar las reseñas aparece una sección de **Estadísticas del club** debajo de las opciones. Muestra una clasificación de todos los lectores y todos los libros por puntuación media. En cada lista puedes elegir un criterio concreto para comparar sus medias en esa categoría. El número de reseñas puntuadas se muestra junto a cada resultado; las puntuaciones vacías no se incluyen en la media.
 

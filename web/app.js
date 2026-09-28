@@ -768,12 +768,16 @@ function drawCover(context, title, subtitle, reviewCount, bookCount) {
   context.fillStyle = ink;
   context.font = '32px Georgia, serif';
   context.fillText('Cuadernillo de reseñas', 620, 438);
-  const words = title.trim().split(/\s+/);
-  let titleSize = 118;
+  let titleSize = 80;        // currently 118
+  const titleWidth = 760;    // currently 890; smaller means wider side margins
   let titleFont = `bold ${titleSize}px Georgia, serif`;
-  let titleLines = words.length >= 2 && words.length <= 4 && words.every((word) => word.length <= 12)
-    ? words
-    : wrapLines(context, title, 890, titleFont);
+  let titleLines = wrapLines(context, title, titleWidth, titleFont);
+
+  while (titleLines.length > 4 && titleSize > 48) {
+    titleSize -= 6;
+    titleFont = `bold ${titleSize}px Georgia, serif`;
+    titleLines = wrapLines(context, title, titleWidth, titleFont);
+  }
   while ((titleLines.length > 4 || titleLines.some((line) => {
     context.font = titleFont;
     return context.measureText(line).width > 890;
