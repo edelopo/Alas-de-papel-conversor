@@ -338,7 +338,16 @@ function parseRows(rows) {
     };
   });
   if (!reviews.length) throw new Error('El CSV no contiene reseñas. Exporta las respuestas, no una hoja vacía.');
-  return reviews.sort((left, right) => left.bookTitle.localeCompare(right.bookTitle, 'es', { sensitivity: 'base' }) || left.timestampSortKey - right.timestampSortKey);
+  const collator = new Intl.Collator('es', { sensitivity: 'base' });
+  reviews.sort((left, right) => collator.compare(left.bookTitle, right.bookTitle) || left.timestampSortKey - right.timestampSortKey);
+  const books = [];
+  reviews.forEach((review) => {
+    const last = books[books.length - 1];
+    if (last && collator.compare(last[0].bookTitle, review.bookTitle) === 0) last.push(review);
+    else books.push([review]);
+  });
+  books.sort((left, right) => left[0].timestampSortKey - right[0].timestampSortKey || collator.compare(left[0].bookTitle, right[0].bookTitle));
+  return books.flat();
 }
 
 function calculateStats(reviews) {
